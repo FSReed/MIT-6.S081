@@ -8,8 +8,8 @@ main(int argc, char* argv[]) {
     pipe(init_pipe);
 
     /* Initialize the input stream */
-    for (int i = 2; i < 40; i++) {
-        write(init_pipe[1], &i, 4); // Input data into the pipeline
+    for (int i = 2; i < 36; i++) {
+        write(init_pipe[1], &i, sizeof(int)); // Input data into the pipeline
     }
     close(init_pipe[1]);    // Close the input fd
 
@@ -23,11 +23,16 @@ main(int argc, char* argv[]) {
     while (1) {
         int receive;    // Used to store the input value.
 
-        if (read(0, &receive, 4) == 0) {
-            close(1);   // Kill the output of the current process
+        if (read(0, &receive, sizeof(int)) == 0) {
+            close(1);   // Shut down the output port of the current process
             break;
         }
-        if (receive == 2 || receive % group != 0) {
+        /* This is crutial 
+         * The previous condition is if (receive == 2 || ...)
+         * In this case, the root process can never right values into the pipe
+         * So all the children can't access the input from the pipeline
+         */
+        if (group == 1 || receive % group != 0) {
             if (set == 0) {
                 /* No following process has been created */
                 printf("prime %d\n", receive);
@@ -50,9 +55,10 @@ main(int argc, char* argv[]) {
                 }
             } else {
                 /* No need to fork again */
-                write(1, &receive, 4);
+                write(1, &receive, sizeof(int));
             }
         }
     }
+    wait(0);
     exit(0);
 }
