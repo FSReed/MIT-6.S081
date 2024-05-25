@@ -1,0 +1,12 @@
+make: 'kernel/kernel' is up to date.
+== Test sleep, no arguments == sleep, no arguments: OK (1.4s) 
+== Test sleep, returns == sleep, returns: OK (1.3s) 
+== Test sleep, makes syscall == sleep, makes syscall: OK (1.2s) 
+== Test pingpong == pingpong: OK (1.4s) 
+== Test primes == primes: OK (1.4s) 
+== Test find, in current directory == find, in current directory: OK (1.9s) 
+== Test find, recursive == find, recursive: OK (3.1s) 
+== Test xargs == xargs: OK (3.2s) 
+== Test time == 
+time: OK 
+Score: 100/100
