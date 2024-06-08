@@ -664,13 +664,9 @@ proccount()
 {
   uint64 totalnum;
   totalnum = 0;
-  struct proc *current;
-  for (int i = 0; i < NCPU; i++) {
-    current = cpus[i].proc;
-    while (current) {
-      if (current->state != UNUSED)
-        totalnum += 1;
-      current = current->parent;
+  for (int i = 0; i < NPROC; i++) {
+    if (proc[i].state != UNUSED) {
+      totalnum += 1;
     }
   }
   return totalnum;
