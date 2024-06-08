@@ -1,0 +1,9 @@
+make: 'kernel/kernel' is up to date.
+== Test trace 32 grep == trace 32 grep: OK (1.9s) 
+== Test trace all grep == trace all grep: OK (1.3s) 
+== Test trace nothing == trace nothing: OK (1.2s) 
+== Test trace children == trace children: OK (37.2s) 
+== Test sysinfotest == sysinfotest: OK (4.4s) 
+== Test time == 
+time: OK 
+Score: 35/35
