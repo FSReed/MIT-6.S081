@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
 
 uint64
 sys_exit(void)
@@ -95,6 +96,7 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
 // trace the system calls of a process
 uint64
 sys_trace(void)
@@ -104,4 +106,19 @@ sys_trace(void)
     return -1;
   myproc()->syscall_mask = mask;
   return 0;
+}
+
+// get the system info and copy to the user space
+uint64
+sys_sysinfo(void)
+{
+  uint64 si;
+  struct sysinfo container;
+
+  if (argaddr(0, &si) < 0) {
+    return -1;
+  }
+  container.freemem = memfree();
+  container.nproc = proccount();
+  return copyout(myproc()->pagetable, si, (char *)&container, sizeof(container));
 }

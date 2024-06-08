@@ -80,3 +80,26 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+/* count the amount of free memory
+ * Wrong implementation at first, using: `PHYSTOP - (uint64)(kmem.freelist)`
+ * The address of `kmem.freelist` is not grown by PGSIZE.
+ * So it's impossible to use only a simple subtraction to get the amount of free memory.
+ * Instead, we should go through the entire memory space until there's no space to allocate.
+ */
+uint64
+memfree(void)
+{
+  struct run *r;
+  uint64 pagenum = 0;
+
+  acquire(&kmem.lock);
+  r = kmem.freelist;
+  while (r) {
+    pagenum += 1;
+    /* I have no idea when and how `r->next` is assigned for now. */
+    r = r->next;
+  }
+  release(&kmem.lock);
+  return pagenum << 12;
+}

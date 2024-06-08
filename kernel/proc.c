@@ -657,3 +657,21 @@ procdump(void)
     printf("\n");
   }
 }
+
+// count the number of the processes
+uint64
+proccount()
+{
+  uint64 totalnum;
+  totalnum = 0;
+  struct proc *current;
+  for (int i = 0; i < NCPU; i++) {
+    current = cpus[i].proc;
+    while (current) {
+      if (current->state != UNUSED)
+        totalnum += 1;
+      current = current->parent;
+    }
+  }
+  return totalnum;
+}
