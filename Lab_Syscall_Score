@@ -7,3 +7,6 @@ make: 'kernel/kernel' is up to date.
 == Test time == 
 time: OK 
 Score: 35/35
+
+# Github Contribution test
+
