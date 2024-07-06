@@ -98,6 +98,11 @@ memfree(void)
   while (r) {
     pagenum += 1;
     /* I have no idea when and how `r->next` is assigned for now. */
+    /* Update on 24-07-06:
+     * Each page is initialized during boot in `freerange`
+     * As one page is initialized, there's one struct run* pointing to this page.
+     * After the initialization, all pages are stored as a big linked list.
+     */
     r = r->next;
   }
   release(&kmem.lock);
