@@ -93,9 +93,31 @@ sys_pgaccess(void)
   if(argint(2, &n) < 0) {
     return -1;
   }
+  if(n > 128) {
+    printf("Can't scan more than 1kB pages.\n");
+    return -1;
+  }
+
   // Used for copyout.
   if(argaddr(3, &ubuffer) < 0) {
     return -1;
+  }
+
+  char buffer[128]; // Can scan 1024 pages in total.
+  for (int i = 0; i < 128; i++) {
+    buffer[i] = 0;
+  }
+
+  pagetable_t pagetable = myproc()->pagetable;
+  for(int i = 0; i < n; i++, uva += 0x1000) {
+    pte_t *pte = walk(pagetable, uva);
+    if((*pte & PTE_A) == 1) {
+      // record this bit
+      int position = i / 8;
+      buffer[position] += (1L << i);
+      // set PTE_A to 0 again.
+      *pte &= !PTE_A;
+    }
   }
 
   return 0;
