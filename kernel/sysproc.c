@@ -81,6 +81,23 @@ int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 uva;
+  int n;
+  uint64 ubuffer;
+
+  // Get the starting virtual address.
+  if(argaddr(0, &uva) < 0) {
+    return -1;
+  }
+  // Get the page number.
+  if(argint(2, &n) < 0) {
+    return -1;
+  }
+  // Used for copyout.
+  if(argaddr(3, &ubuffer) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 #endif
