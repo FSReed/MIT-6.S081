@@ -91,7 +91,7 @@ sys_pgaccess(void)
   }
 
   // Get the page number.
-  if(argint(2, &n) < 0) {
+  if(argint(1, &n) < 0) {
     return -1;
   }
   if(n > 128) {
@@ -100,7 +100,7 @@ sys_pgaccess(void)
   }
 
   // Used for copyout.
-  if(argaddr(3, &ubuffer) < 0) {
+  if(argaddr(2, &ubuffer) < 0) {
     return -1;
   }
   pagetable_t pagetable = myproc()->pagetable;

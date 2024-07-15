@@ -469,7 +469,7 @@ pgaccess(pagetable_t pagetable, uint64 uva, int number, uint64 ubuffer) {
     buffer[i] = 0;
   }
 
-  for(int i = 0; i < number; i++, uva += 0x1000) {
+  for(int i = 0; i < number; i++, uva += PGSIZE) {
     pte_t *pte = walk(pagetable, uva, 0);
     if((*pte & PTE_A) != 0) {
       // record this bit
