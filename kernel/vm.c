@@ -460,3 +460,31 @@ vmprint(pagetable_t pagetable) {
   printf("page table %p\n", pagetable);
   vmprint_level(pagetable, 0);
 }
+
+void
+pgaccess(pagetable_t pagetable, uint64 uva, int number, uint64 ubuffer) {
+
+  char buffer[128]; // Can scan 1024 pages in total.
+  for (int i = 0; i < 128; i++) {
+    buffer[i] = 0;
+  }
+
+  for(int i = 0; i < number; i++, uva += 0x1000) {
+    pte_t *pte = walk(pagetable, uva, 0);
+    if((*pte & PTE_A) != 0) {
+      // record this bit
+      int position = i / 8;
+      buffer[position] += (1L << (i % 8));
+      // set PTE_A to 0 again.
+      *pte &= ~PTE_A;
+    }
+  }
+
+  /* Get the total byte number to copyout
+   * As the upper limit of total bytes is 128, I use a char to store it
+   */
+  char bytenum = (number >> 3) + (!(number & 0x7) ^ 1L);
+
+  // copyout to user space
+  copyout(pagetable, ubuffer, buffer, bytenum);
+}
