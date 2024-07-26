@@ -47,8 +47,12 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  // Won't allocate page right now
+  printf("Before sbrk: p->sz = 0x%x\n", myproc()->sz);
+  myproc()->sz += n;
+  printf("Wth n = 0x%x, Now p->sz = 0x%x\n",n, myproc()->sz);
+  // if(growproc(n) < 0)
+  //   return -1;
   return addr;
 }
 

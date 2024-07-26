@@ -1,0 +1,74 @@
+// This is the output of QEMU when running `echo hi`.
+
+$ echo hi
+Before sbrk: p->sz = 0x4000
+// Asking for more pages than this process actually needs.
+Wth n = 0x10000, Now p->sz = 0x14000
+// New page allocated: 0x4000.
+page fault at 0x0000000000004008
+Now in trap, gonna allocate a page for va 0x0000000000004000
+// New page allocated: 0x13000.
+page fault at 0x0000000000013f48
+Now in trap, gonna allocate a page for va 0x0000000000013000
+uvmunmap: 0x0000003ffffff000
+uvmunmap: success
+uvmunmap: 0x0000003fffffe000
+uvmunmap: success
+uvmunmap: 0x0000000000000000
+uvmunmap: success
+uvmunmap: 0x0000000000001000
+uvmunmap: success
+uvmunmap: 0x0000000000002000
+uvmunmap: success
+uvmunmap: 0x0000000000003000
+uvmunmap: success
+// Lazy-allocated page.
+uvmunmap: 0x0000000000004000
+uvmunmap: success
+// From now on, these pages are never allocated.
+uvmunmap: 0x0000000000005000
+There's no mapping at 0x0000000000005000!
+uvmunmap: 0x0000000000006000
+There's no mapping at 0x0000000000006000!
+uvmunmap: 0x0000000000007000
+There's no mapping at 0x0000000000007000!
+uvmunmap: 0x0000000000008000
+There's no mapping at 0x0000000000008000!
+uvmunmap: 0x0000000000009000
+There's no mapping at 0x0000000000009000!
+uvmunmap: 0x000000000000a000
+There's no mapping at 0x000000000000a000!
+uvmunmap: 0x000000000000b000
+There's no mapping at 0x000000000000b000!
+uvmunmap: 0x000000000000c000
+There's no mapping at 0x000000000000c000!
+uvmunmap: 0x000000000000d000
+There's no mapping at 0x000000000000d000!
+uvmunmap: 0x000000000000e000
+There's no mapping at 0x000000000000e000!
+uvmunmap: 0x000000000000f000
+There's no mapping at 0x000000000000f000!
+uvmunmap: 0x0000000000010000
+There's no mapping at 0x0000000000010000!
+uvmunmap: 0x0000000000011000
+There's no mapping at 0x0000000000011000!
+uvmunmap: 0x0000000000012000
+There's no mapping at 0x0000000000012000!
+// Lazy-allocated page.
+uvmunmap: 0x0000000000013000
+uvmunmap: success
+// Successfully prints `hi`.
+hi
+// Unmap trampoline
+uvmunmap: 0x0000003ffffff000
+uvmunmap: success
+// Unmap trapframe
+uvmunmap: 0x0000003fffffe000
+uvmunmap: success
+// Unmap other pages of this process.
+uvmunmap: 0x0000000000000000
+uvmunmap: success
+uvmunmap: 0x0000000000001000
+uvmunmap: success
+uvmunmap: 0x0000000000002000
+uvmunmap: success
