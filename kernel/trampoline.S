@@ -29,6 +29,8 @@ uservec:
         csrrw a0, sscratch, a0
 
         # save the user registers in TRAPFRAME
+        # Note here are 31 registers stored in total
+        # Don't forget register x0 is always 0, no need to store this one
         sd ra, 40(a0)
         sd sp, 48(a0)
         sd gp, 56(a0)
@@ -65,6 +67,9 @@ uservec:
         sd t0, 112(a0)
 
         # restore kernel stack pointer from p->trapframe->kernel_sp
+        # When tracking the write() call of shell on boot, the address stored in $a0+8 is `0x3fffffc000`
+        # which is 2 pages from trampoline page.
+        # This makes sense because there's a guard page under the kernel trampoline page.
         ld sp, 8(a0)
 
         # make tp hold the current hartid, from p->trapframe->kernel_hartid
