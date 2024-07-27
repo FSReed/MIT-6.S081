@@ -1,0 +1,7 @@
+1. In the call to printf in main, the arguments are in registers a0-a2. The assembler inlines f(x) and g(x) into the instructions.
+2. These two function calls are inlined.
+3. `auipc ra, 0x0` and `jalr 1510(ra)` indicates the position of `printf`. On my machine, `printf` locates at `0x616`.
+4. `ra` = `0x38` after the `jalr` instruction to `printf`, which is the location of the instruction next to this `jalr`.
+5. Output is: `He110 World`.
+   If this code is running on a Big-Endian machine, `i` should be set to `0x00726c64`. But no need to change `57616` because this number would be stored in Big-Endian format and be printed out like `e110`.
+6. Output is `x = 3 y = <A random number>` because the register containing the second argument is carrying garbage in it.
