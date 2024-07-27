@@ -105,4 +105,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // These fields are reserved for alarm:
+  uint64 alarmInterval;        // The interval of calling the handler
+  uint64 alarmFunc;            // The va of the alarm handler
+  uint64 ticksAfterLastCall;   // Record CPU ticks after alarm is called
 };
