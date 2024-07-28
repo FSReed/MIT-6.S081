@@ -110,4 +110,8 @@ struct proc {
   uint64 alarmInterval;        // The interval of calling the handler
   uint64 alarmFunc;            // The va of the alarm handler
   uint64 ticksAfterLastCall;   // Record CPU ticks after alarm is called
+
+  // Create an alarmframe to store the state of the process before moving to alarm handler
+  struct trapframe *alarmFrame;
+  char alarmExecuting;         // Indicates whether the alarm handler is running
 };

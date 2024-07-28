@@ -127,6 +127,13 @@ found:
     return 0;
   }
 
+  // Allocate a alarmFrame page.
+  if((p->alarmFrame = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -134,6 +141,8 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->alarmExecuting = 0;
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -155,6 +164,8 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if (p->alarmFrame)
+    kfree((void*)p->alarmFrame);
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -196,6 +207,14 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  // map the alarmFrame just below TRAPFRAME, for alarmtest
+  if(mappages(pagetable, ALARMFRAME, PGSIZE,
+              (uint64)(p->alarmFrame), PTE_R | PTE_W) < 0){
+    uvmunmap(pagetable, TRAPFRAME, 2, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
   return pagetable;
 }
 
@@ -206,6 +225,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable, ALARMFRAME, 1, 0);
   uvmfree(pagetable, sz);
 }
 

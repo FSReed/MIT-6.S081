@@ -82,9 +82,10 @@ usertrap(void)
       // Being alarmed
       if (p->ticksAfterLastCall < p->alarmInterval)
         p->ticksAfterLastCall += 1; // Increase the ticks
-      else {
-        p->trapframe->epc = p->alarmFunc; // Return to the function
-        p->ticksAfterLastCall = 0; // Reset the ticks
+      else if (p->ticksAfterLastCall == p->alarmInterval && p->alarmExecuting == 0) {
+        memmove(p->alarmFrame, p->trapframe, PGSIZE); // Store the current state
+        p->trapframe->epc = p->alarmFunc; // Return to execute the handler
+        p->alarmExecuting = 1; // Alarm handler is running
       }
     } else {
       // Not alarmed

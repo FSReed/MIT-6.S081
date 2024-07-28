@@ -116,6 +116,9 @@ sys_sigalarm(void)
 uint64
 sys_sigreturn(void)
 {
-  myproc()->alarmInterval = 0;
+  // Restore the interrupted code after handler returns
+  memmove(myproc()->trapframe, myproc()->alarmFrame, PGSIZE);
+  myproc()->alarmExecuting = 0;
+  myproc()->ticksAfterLastCall = 0;
   return 0;
 }
