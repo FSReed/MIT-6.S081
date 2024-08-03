@@ -66,7 +66,7 @@ kfree(void *pa)
     release(&kmem.lock);
     refcount[MEMINDEX((uint64) pa)] = 0;
   } else {
-    panic("Can't free this");
+    refcount[MEMINDEX((uint64) pa)] -= 1;
   }
 
 }
@@ -91,7 +91,12 @@ kalloc(void)
   if (((char*) r) >= end && ((uint64) r) < PHYSTOP) {
     refcount[MEMINDEX((uint64) r)] += 1;
   } else {
-    panic("Can't alloc this one");
+    panic("kalloc: out of range");
   }
   return (void*)r;
+}
+
+void
+krefcount(void *pa, int bias) {
+  refcount[MEMINDEX((uint64) pa)] += bias;
 }

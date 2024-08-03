@@ -324,6 +324,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if (mappages(old, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0) {
       panic("fork: parent remap failed");
     }
+    krefcount((void*) pa, 1);
   }
   return 0;
 
@@ -438,6 +439,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   }
 }
 
+/* Remap the cow page */
 void
 uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
   pte_t* pte;
@@ -449,4 +451,16 @@ uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
   uvmunmap(pagetable, va, 1, 0);
   if (mappages(pagetable, va, PGSIZE, dst, (flag | PTE_W) & (~PTE_C)) != 0)
     panic("remap failed");
+}
+
+/* Returns 1 if one va is in a cow page
+ * 0 if it's not
+ */
+int
+iscowpage(pagetable_t pagetable, uint64 va) {
+  pte_t* pte = walk(pagetable, va, 0);
+  if (*pte & PTE_C)
+    return 1;
+  else
+    return 0;
 }

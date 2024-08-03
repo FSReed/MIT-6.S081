@@ -67,15 +67,17 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if (r_scause() == 15) {
+  } else if (r_scause() == 15 && iscowpage(p->pagetable, r_stval()) != 0) {
       uint64 va = r_stval();
+      uint64 pa = walkaddr(p->pagetable, va);
       char* mem;
 
       va = PGROUNDDOWN(va);
       uvmunmap(p->pagetable, va, 1, 0);
+      krefcount((void*) pa, -1);
       
       if ((mem = kalloc()) == 0) {
-        panic("usertrap: Can't alloc more pages\n");
+        panic("usertrap: Can't alloc more pages");
       }
       
       uvmcowremap(p->pagetable, va, (uint64) mem);
