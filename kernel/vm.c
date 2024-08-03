@@ -320,7 +320,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       goto err;
     }
 
-    uvmunmap(old, i, PGSIZE, 0);
+    uvmunmap(old, i, 1, 0);
     if (mappages(old, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0) {
       panic("fork: parent remap failed");
     }
