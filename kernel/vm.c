@@ -362,6 +362,22 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
+
+    /* What if this is a cow page? */
+    if (iscowpage(pagetable, va0)) {
+      char* mem;
+      int flags = PTE_FLAGS(*walk(pagetable, va0, 0));
+
+      if ((mem = kalloc()) == 0)
+        return -1;
+
+      memmove(mem, (void*) pa0, PGSIZE);
+      uvmunmap(pagetable, va0, 1, 0);
+      krefcount((void*) pa0, -1);
+      if (mappages(pagetable, va0, PGSIZE, (uint64) mem, flags | PTE_W) != 0)
+        return -1;
+    }
+
     memmove((void *)(pa0 + (dstva - va0)), src, n);
 
     len -= n;
