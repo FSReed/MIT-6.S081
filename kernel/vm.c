@@ -458,13 +458,15 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
 void
 uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
   pte_t* pte;
-  int flag;
+  int flags;
 
   va = PGROUNDDOWN(va);
   pte = walk(pagetable, va, 0);
-  flag = PTE_FLAGS(*pte);
+  flags = PTE_FLAGS(*pte);
+  flags |= PTE_W;
+  flags &= (~PTE_C);
   uvmunmap(pagetable, va, 1, 1);
-  if (mappages(pagetable, va, PGSIZE, dst, (flag | PTE_W) & (~PTE_C)) != 0)
+  if (mappages(pagetable, va, PGSIZE, dst, flags) != 0)
     panic("remap failed");
 }
 

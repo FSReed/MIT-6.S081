@@ -67,17 +67,23 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if (r_scause() == 15 && iscowpage(p->pagetable, r_stval()) != 0) {
-      uint64 va = r_stval();
-      char* mem;
+  } else if (iscowpage(p->pagetable, r_stval()) != 0) {
+      if (r_scause() == 13 || r_scause() == 15) {
+        uint64 va = r_stval();
+        char* mem;
 
-      va = PGROUNDDOWN(va);
-      
-      if ((mem = kalloc()) == 0) {
-        panic("usertrap: Can't alloc more pages");
+        va = PGROUNDDOWN(va);
+        
+        if ((mem = kalloc()) == 0) {
+          panic("usertrap: Can't alloc more pages");
+        }
+        
+        uvmcowremap(p->pagetable, va, (uint64) mem);
+      } else {
+        printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+        printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+        p->killed = 1;
       }
-      
-      uvmcowremap(p->pagetable, va, (uint64) mem);
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
