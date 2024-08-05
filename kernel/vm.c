@@ -311,17 +311,19 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
+    flags &= (~PTE_W);
+    flags |= PTE_C;
     // if((mem = kalloc()) == 0)
     //   goto err;
     // memmove(mem, (char*)pa, PGSIZE);
 
     uvmunmap(old, i, 1, 0);
-    if (mappages(old, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0) {
+    if (mappages(old, i, PGSIZE, pa, flags) != 0) {
       panic("fork: parent remap failed");
     }
 
     // Map child's vm to parent's pa
-    if(mappages(new, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0){
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
       goto err;
     }
 
