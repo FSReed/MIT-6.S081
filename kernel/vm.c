@@ -314,16 +314,18 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     // if((mem = kalloc()) == 0)
     //   goto err;
     // memmove(mem, (char*)pa, PGSIZE);
-    
-    // Map child's vm to parent's pa
-    if(mappages(new, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0){
-      goto err;
-    }
 
     uvmunmap(old, i, 1, 0);
     if (mappages(old, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0) {
       panic("fork: parent remap failed");
     }
+
+    // Map child's vm to parent's pa
+    if(mappages(new, i, PGSIZE, pa, (flags & (~PTE_W)) | PTE_C) != 0){
+      goto err;
+    }
+
+    // Increase the ref count of this page
     krefcount((void*) pa, 1);
   }
   return 0;
@@ -366,16 +368,13 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     /* What if this is a cow page? */
     if (iscowpage(pagetable, va0)) {
       char* mem;
-      int flags = PTE_FLAGS(*walk(pagetable, va0, 0));
 
       if ((mem = kalloc()) == 0)
         return -1;
 
       memmove(mem, (void*) pa0, PGSIZE);
-      uvmunmap(pagetable, va0, 1, 0);
-      krefcount((void*) pa0, -1);
-      if (mappages(pagetable, va0, PGSIZE, (uint64) mem, flags | PTE_W) != 0)
-        return -1;
+      uvmcowremap(pagetable, va0, (uint64) mem);
+      pa0 = (uint64) mem;
     }
 
     memmove((void *)(pa0 + (dstva - va0)), src, n);
@@ -464,7 +463,7 @@ uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
   va = PGROUNDDOWN(va);
   pte = walk(pagetable, va, 0);
   flag = PTE_FLAGS(*pte);
-  uvmunmap(pagetable, va, 1, 0);
+  uvmunmap(pagetable, va, 1, 1);
   if (mappages(pagetable, va, PGSIZE, dst, (flag | PTE_W) & (~PTE_C)) != 0)
     panic("remap failed");
 }

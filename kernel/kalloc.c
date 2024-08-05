@@ -30,6 +30,7 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  memset(refcount, 1, REFNUM);
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -54,7 +55,7 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
-  if (refcount[MEMINDEX((uint64) pa)] <= 1) {
+  if (refcount[MEMINDEX((uint64) pa)] == 1) {
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PGSIZE);
 
@@ -64,10 +65,8 @@ kfree(void *pa)
     r->next = kmem.freelist;
     kmem.freelist = r;
     release(&kmem.lock);
-    refcount[MEMINDEX((uint64) pa)] = 0;
-  } else {
-    refcount[MEMINDEX((uint64) pa)] -= 1;
   }
+  refcount[MEMINDEX((uint64) pa)] -= 1;
 
 }
 
