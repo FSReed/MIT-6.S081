@@ -467,6 +467,12 @@ uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
   flags = PTE_FLAGS(*pte);
   flags |= PTE_W;
   flags &= (~PTE_C);
+
+
+  /* The Most DISGUSTING bug I've ever made */
+  memmove((void*) dst, (void*) PTE2PA(*pte), PGSIZE);
+
+
   uvmunmap(pagetable, va, 1, 1);
   if (mappages(pagetable, va, PGSIZE, dst, flags) != 0)
     panic("remap failed");
