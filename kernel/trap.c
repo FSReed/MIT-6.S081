@@ -75,11 +75,13 @@ usertrap(void)
         va = PGROUNDDOWN(va);
         
         if ((mem = kalloc()) == 0) {
-          panic("usertrap: Can't alloc more pages");
+          printf("usertrap: Can't allocate more pages\n");
+          p->killed = 1;
+        } else {
+          uvmcowremap(p->pagetable, va, (uint64) mem);
         }
-        
-        uvmcowremap(p->pagetable, va, (uint64) mem);
       } else {
+        printf("in a cow page:\n");
         printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
         printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
         p->killed = 1;

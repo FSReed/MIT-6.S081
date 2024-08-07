@@ -89,9 +89,8 @@ kalloc(void)
 
   if (((char*) r) >= end && ((uint64) r) < PHYSTOP) {
     refcount[MEMINDEX((uint64) r)] += 1;
-  } else {
-    panic("kalloc: out of range");
   }
+
   return (void*)r;
 }
 

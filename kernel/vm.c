@@ -474,8 +474,7 @@ uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
 
 
   uvmunmap(pagetable, va, 1, 1);
-  if (mappages(pagetable, va, PGSIZE, dst, flags) != 0)
-    panic("remap failed");
+  mappages(pagetable, va, PGSIZE, dst, flags);
 }
 
 /* Returns 1 if one va is in a cow page
@@ -483,6 +482,8 @@ uvmcowremap(pagetable_t pagetable, uint64 va, uint64 dst) {
  */
 int
 iscowpage(pagetable_t pagetable, uint64 va) {
+  if (va >= MAXVA)
+    return 0;
   pte_t* pte = walk(pagetable, va, 0);
   if (*pte & PTE_C)
     return 1;
