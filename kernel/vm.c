@@ -484,7 +484,10 @@ int
 iscowpage(pagetable_t pagetable, uint64 va) {
   if (va >= MAXVA)
     return 0;
-  pte_t* pte = walk(pagetable, va, 0);
+  pte_t* pte;
+
+  if ((pte = walk(pagetable, va, 0)) == 0)
+    return 0;
   if (*pte & PTE_C)
     return 1;
   else
