@@ -91,4 +91,5 @@ forkInLoop() {
 int
 main(int argc, char* argv[]) {
     readPipe();
+    return 0;
 }

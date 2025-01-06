@@ -155,6 +155,21 @@ consoleintr(int c)
       consputc(BACKSPACE);
     }
     break;
+  case C('W'):
+    /* First delete the redundant spaces */
+    while (cons.e != cons.w &&
+           cons.buf[(cons.e - 1) % INPUT_BUF] == ' ') {
+      cons.e--;
+      consputc(BACKSPACE);
+    }
+
+    /* Delete the word */
+    while (cons.e != cons.w &&
+           cons.buf[(cons.e - 1) % INPUT_BUF] != ' ') {
+      cons.e--;
+      consputc(BACKSPACE);
+    }
+    break;
   default:
     if(c != 0 && cons.e-cons.r < INPUT_BUF){
       c = (c == '\r') ? '\n' : c;

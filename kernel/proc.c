@@ -68,6 +68,9 @@ cpuid()
 
 // Return this CPU's cpu struct.
 // Interrupts must be disabled.
+/** If a timer interrupt happened, the thread would yield and move to another CPU,
+ * the returned value would no longer be correct.
+ */ 
 struct cpu*
 mycpu(void) {
   int id = cpuid();
