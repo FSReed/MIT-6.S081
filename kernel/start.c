@@ -8,6 +8,10 @@ void main();
 void timerinit();
 
 // entry.S needs one stack per CPU.
+// Notice 4096 * NCPU indicates each CPU is allocated a fixed 4KB stack size
+// which means the `sp` register determines the stack position of a CPU.
+// Why 4KB?
+// I think it simplifies the page alighment, and it's sufficient for boot
 __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 
 // a scratch area per CPU for machine-mode timer interrupts.
@@ -21,11 +25,14 @@ void
 start()
 {
   // set M Previous Privilege mode to Supervisor, for mret.
+  // check `mret` at the end of start()
   unsigned long x = r_mstatus();
   x &= ~MSTATUS_MPP_MASK;
   x |= MSTATUS_MPP_S;
   w_mstatus(x);
 
+  // 2. Return to main() later
+  // Check riscv.h:35 for more details about w_mepc
   // set M Exception Program Counter to main, for mret.
   // requires gcc -mcmodel=medany
   w_mepc((uint64)main);
@@ -44,6 +51,7 @@ start()
   w_pmpcfg0(0xf);
 
   // ask for clock interrupts.
+  // A little bit complex. Review later
   timerinit();
 
   // keep each CPU's hartid in its tp register, for cpuid().
@@ -51,6 +59,7 @@ start()
   w_tp(id);
 
   // switch to supervisor mode and jump to main().
+  // the switch happened at the beginning of start()
   asm volatile("mret");
 }
 

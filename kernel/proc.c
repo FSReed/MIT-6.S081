@@ -242,6 +242,7 @@ userinit(void)
   p->trapframe->epc = 0;      // user program counter
   p->trapframe->sp = PGSIZE;  // user stack pointer
 
+  // Execute initcode.S
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 

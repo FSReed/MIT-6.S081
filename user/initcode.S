@@ -11,6 +11,7 @@ start:
         li a7, SYS_exec
         ecall
 
+# This exit won't be reached, I think
 # for(;;) exit();
 exit:
         li a7, SYS_exit

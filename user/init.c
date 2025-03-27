@@ -11,6 +11,8 @@
 
 char *argv[] = { "sh", 0 };
 
+// After SYS_exec call from initcode, we'll start from here
+// Then the system is up.
 int
 main(void)
 {
