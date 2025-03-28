@@ -159,6 +159,7 @@ static char (*syscall_names[]) = {
   [SYS_sysinfo] "sysinfo",
 };
 
+// syscall() will handle the system calls, so all system calls can be tracked here.
 void
 syscall(void)
 {
@@ -167,7 +168,7 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    p->trapframe->a0 = syscalls[num]();
+    p->trapframe->a0 = syscalls[num](); // Use the corresponding system call
     if ((p->syscall_mask & (1 << num)) != 0) {
       printf("%d: syscall %s -> %d\n", p->pid, syscall_names[num], p->trapframe->a0);
     }

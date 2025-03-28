@@ -1,4 +1,10 @@
 #!/usr/bin/perl -w
+# This script generates the entry of the system-call in user/usys.S!
+# Run `make qemu`, Makefile will generate user/usys.S
+# NOTE: The assembly code in usys.S exists in user space.
+# Each time user calls a function like trace(), it would call the assembly code
+# The user code traps into the kernel via `ecall` in usys.S
+# Amazing!
 
 # Generate usys.S, the stubs for syscalls.
 
