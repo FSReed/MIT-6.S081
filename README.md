@@ -1,7 +1,8 @@
 # Notes, in commits:
 
 1. [The boot of xv6](https://github.com/FSReed/MIT-6.S081/commit/fbdc15afe0bb752b38cf0efc00f50e58dadea051)
-2. ![How users use system calls](https://github.com/FSReed/MIT-6.S081/commit/c277e73108fbfc53e72f754daf2a43eb15c1ce21) on branch syscall
+2. ![How users use system calls](https://github.com/FSReed/MIT-6.S081/commit/c277e73108fbfc53e72f754daf2a43eb15c1ce21) on branch `syscall`
+3. [Setup kernel pagetable on boot](https://github.com/FSReed/MIT-6.S081/commit/f01f7f25d69795594c813c9b301574c84c1fa23f) on branch `pgtbl`
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
