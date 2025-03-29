@@ -1,4 +1,4 @@
-// Physical memory layout
+// Physical memory layout!
 
 // qemu -machine virt is set up like this,
 // based on qemu's hw/riscv/virt.c:
@@ -57,6 +57,10 @@
 
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
+
+// NOTE: I don't know why leave 3 pages between trampoline and the kernel stacks
+// There's only 1 guard page needed, I've tried to modify 3*PGSIZE to PGSIZE,
+// everything is ok on boot, and nothing happens as I execute `echo hello`
 #define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
 
 // User memory layout.

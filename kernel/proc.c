@@ -29,6 +29,9 @@ struct spinlock wait_lock;
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
 // guard page.
+
+// 1. Each kernel stack only has 1 page.
+// 2. See how macro `KSTACK` is defined in memlayout.h
 void
 proc_mapstacks(pagetable_t kpgtbl) {
   struct proc *p;

@@ -1,3 +1,9 @@
+/* From xv6 doc:
+ * Functions starting with kvm manipulate the kernel page table;
+ * functions starting with uvm manipulate a user page table;
+ * other functions are used for both.
+ */
+
 #include "param.h"
 #include "types.h"
 #include "memlayout.h"
@@ -15,7 +21,7 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
 
-// Make a direct-map page table for the kernel.
+// Make a **direct-map** page table for the kernel.
 pagetable_t
 kvmmake(void)
 {
@@ -50,6 +56,7 @@ kvmmake(void)
 }
 
 // Initialize the one kernel_pagetable
+// Called by main
 void
 kvminit(void)
 {
@@ -65,6 +72,7 @@ kvminithart()
   sfence_vma();
 }
 
+// The root of generating pagetables on boot
 // Return the address of the PTE in page table pagetable
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page-table pages.
@@ -121,7 +129,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 }
 
 // add a mapping to the kernel page table.
-// only used when booting.
+// only used when booting, called by kvmmake.
 // does not flush TLB or enable paging.
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
@@ -134,6 +142,7 @@ kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 // physical addresses starting at pa. va and size might not
 // be page-aligned. Returns 0 on success, -1 if walk() couldn't
 // allocate a needed page-table page.
+// Used for both kernel and user
 int
 mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 {
