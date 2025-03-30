@@ -61,6 +61,10 @@
 // NOTE: I don't know why leave 3 pages between trampoline and the kernel stacks
 // There's only 1 guard page needed, I've tried to modify 3*PGSIZE to PGSIZE,
 // everything is ok on boot, and nothing happens as I execute `echo hello`
+
+// After discussion with my friend @smokingsoda,
+// we both think this is a design choice, to align with user space's trapframe.
+// As it has little impact on the system, let's leave it as-is
 #define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
 
 // User memory layout.

@@ -37,7 +37,7 @@ proc_mapstacks(pagetable_t kpgtbl) {
   struct proc *p;
   
   for(p = proc; p < &proc[NPROC]; p++) {
-    char *pa = kalloc();
+    char *pa = kalloc();  // Allocate a page for each kernel stack
     if(pa == 0)
       panic("kalloc");
     uint64 va = KSTACK((int) (p - proc));

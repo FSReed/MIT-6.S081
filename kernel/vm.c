@@ -40,6 +40,10 @@ kvmmake(void)
   kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
 
   // map kernel text executable and read-only.
+  // Check file kernel/kernel.sym, find the address of trampoline and etext
+  // You may find address(etext) = address(trampoline) + PGSIZE
+  // In my case, trampoline's physical address is 0x80007000,
+  // so trampoline is mapped twice, first time here, within the kernel text
   kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
 
   // map kernel data and the physical RAM we'll make use of.
@@ -47,6 +51,7 @@ kvmmake(void)
 
   // map the trampoline for trap entry/exit to
   // the highest virtual address in the kernel.
+  // trampoline is mapped the second time here
   kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
 
   // map kernel stacks
@@ -69,13 +74,15 @@ void
 kvminithart()
 {
   w_satp(MAKE_SATP(kernel_pagetable));
-  sfence_vma();
+  sfence_vma(); // This will flush the current CPU's TLB
 }
 
 // The root of generating pagetables on boot
 // Return the address of the PTE in page table pagetable
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page-table pages.
+//
+// This function relies on physical memory being directly mapped into kernel va space
 //
 // The risc-v Sv39 scheme has three levels of page-table
 // pages. A page-table page contains 512 64-bit PTEs.
@@ -92,8 +99,12 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
     panic("walk");
 
   for(int level = 2; level > 0; level--) {
+    /* pagetable_t is of type uint64*,
+     * which means it can be indexed, and each index refers to a 64-bit pte.
+     *
+     */
     pte_t *pte = &pagetable[PX(level, va)];
-    if(*pte & PTE_V) {
+    if(*pte & PTE_V) { /* PTE_V bit is set by mappages() */
       pagetable = (pagetable_t)PTE2PA(*pte);
     } else {
       if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
@@ -129,7 +140,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 }
 
 // add a mapping to the kernel page table.
-// only used when booting, called by kvmmake.
+// only used when booting, called by kvmmake and proc_mapstacks
 // does not flush TLB or enable paging.
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
