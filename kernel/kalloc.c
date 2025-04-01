@@ -1,6 +1,13 @@
 // Physical memory allocator, for user processes,
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
+//
+// Key takeaway here:
+// Memory allocator treats addresses both as integers and pointers!
+// So for each free page,
+// The instance of `struct run` is stored at the beginning of the page,
+// while there's no need to store the pointer `struct run *`
+// because the address of this page is the pointer.
 
 #include "types.h"
 #include "param.h"
@@ -54,6 +61,8 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
+  // Here! The struct run exists at the beginning of a free page!
+  // And the `pa` itself serves as a pointer to thie struct run.
   r = (struct run*)pa;
 
   acquire(&kmem.lock);
@@ -71,12 +80,13 @@ kalloc(void)
   struct run *r;
 
   acquire(&kmem.lock);
-  r = kmem.freelist;
+  r = kmem.freelist;  // `struct run *r` points to the beginning of a free page
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
   if(r)
+    // This step would remove the `struct run` stored in a free page
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
