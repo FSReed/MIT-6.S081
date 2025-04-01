@@ -38,6 +38,7 @@ sys_wait(void)
   return wait(p);
 }
 
+// Syscall: sbrk
 uint64
 sys_sbrk(void)
 {

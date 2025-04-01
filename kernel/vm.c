@@ -182,6 +182,8 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
+// NOTE: The user process's pagetable is the ONLY record
+// of which physical pages are assigned to that process.
 void
 uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
 {
@@ -202,6 +204,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
     }
+    // Don't forget to clear the PTE
     *pte = 0;
   }
 }
@@ -250,6 +253,8 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
   for(a = oldsz; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
+      // If failed to alloc a new page,
+      // remember to dealloc pages allocated before then return immediately
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
