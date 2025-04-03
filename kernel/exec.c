@@ -46,8 +46,13 @@ exec(char *path, char **argv)
       continue;
     if(ph.memsz < ph.filesz)
       goto bad;
+
+    // This step checks for whether the sum overflows a 64-bit integer.
+    // User can make ph.vaddr point to user space,
+    // but make ph.memsz large enough to make the sum overflow.
     if(ph.vaddr + ph.memsz < ph.vaddr)
       goto bad;
+
     uint64 sz1;
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz)) == 0)
       goto bad;
@@ -71,9 +76,10 @@ exec(char *path, char **argv)
   if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE)) == 0)
     goto bad;
   sz = sz1;
+  // Make the first page a guard page, under the user stack
   uvmclear(pagetable, sz-2*PGSIZE);
   sp = sz;
-  stackbase = sp - PGSIZE;
+  stackbase = sp - PGSIZE;  // Only one page for user stack
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -114,7 +120,7 @@ exec(char *path, char **argv)
   p->sz = sz;
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
-  proc_freepagetable(oldpagetable, oldsz);
+  proc_freepagetable(oldpagetable, oldsz);  // Free the old pagetable
 
   if(p->pid == 1)
     vmprint(p->pagetable);
@@ -122,7 +128,7 @@ exec(char *path, char **argv)
 
  bad:
   if(pagetable)
-    proc_freepagetable(pagetable, sz);
+    proc_freepagetable(pagetable, sz);  // Free the proc pagetable
   if(ip){
     iunlockput(ip);
     end_op();
