@@ -38,18 +38,23 @@ usertrap(void)
 {
   int which_dev = 0;
 
+  // Register sstatus's SPP bit indicates whether a trap came from user mode or supervisor mode
   if((r_sstatus() & SSTATUS_SPP) != 0)
     panic("usertrap: not from user mode");
 
   // send interrupts and exceptions to kerneltrap(),
   // since we're now in the kernel.
+  // This means there would be traps in the kernel too!
   w_stvec((uint64)kernelvec);
 
   struct proc *p = myproc();
   
   // save user program counter.
+  // Because a timer interrupt may happen later,
+  // which may cause a switch to another user process,
+  // which may modify the sepc.
   p->trapframe->epc = r_sepc();
-  
+
   if(r_scause() == 8){
     // system call
 
@@ -108,29 +113,32 @@ usertrapret(void)
   // we're back in user space, where usertrap() is correct.
   intr_off();
 
-  // send syscalls, interrupts, and exceptions to trampoline.S
+  // 1. send syscalls, interrupts, and exceptions to trampoline.S
+  // Remember in usertrap(), stvec is set to kernelvec.
+  // Now we set it back to uservec.
   w_stvec(TRAMPOLINE + (uservec - trampoline));
 
-  // set up trapframe values that uservec will need when
+  // 2. set up trapframe values that uservec will need when
   // the process next re-enters the kernel.
   p->trapframe->kernel_satp = r_satp();         // kernel page table
   p->trapframe->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
   p->trapframe->kernel_trap = (uint64)usertrap;
   p->trapframe->kernel_hartid = r_tp();         // hartid for cpuid()
 
-  // set up the registers that trampoline.S's sret will use
+  // 3. set up the registers that trampoline.S's sret will use
   // to get to user space.
   
+  // 3.1 Set sstatus register
   // set S Previous Privilege mode to User.
   unsigned long x = r_sstatus();
   x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode
   x |= SSTATUS_SPIE; // enable interrupts in user mode
   w_sstatus(x);
 
-  // set S Exception Program Counter to the saved user pc.
+  // 3.2 set S Exception Program Counter to the saved user pc.
   w_sepc(p->trapframe->epc);
 
-  // tell trampoline.S the user page table to switch to.
+  // 3.3 tell trampoline.S the user page table to switch to.
   uint64 satp = MAKE_SATP(p->pagetable);
 
   // jump to trampoline.S at the top of memory, which 

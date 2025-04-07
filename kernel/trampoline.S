@@ -14,7 +14,18 @@ trampoline:
 .align 4
 .globl uservec
 uservec:    
+        # NOTE: RISC-V hardware plays a big role in handling traps.
+        # Check xv6 book on Section 4.1,
+        # many operations are handled by the HARDWARE, including:
+        # 0. If the trap is a device interrupt, and SIE bit is clear, don't do any of the following.
+        # 1. Clear SIE bit in sstatus.
+        # 2. Copy the pc to sepc
+        # 3. Save the current mode in the SPP bit in sstatus
+        # 4. Set scause to reflect the trap's cause
+        # 5. Set the mode to supervisor
+        # 6. Copy stvec to the pc, that's how user code jumps to here!
 	#
+        # Then we start executing:
         # trap.c sets stvec to point here, so
         # traps from user space start here,
         # in supervisor mode, but with a
@@ -29,8 +40,9 @@ uservec:
         csrrw a0, sscratch, a0
 
         # save the user registers in TRAPFRAME
-        # Note here are 31 registers stored in total
-        # Don't forget register x0 is always 0, no need to store this one
+        # Here are 31 registers stored in total
+        # Don't forget register x0 is always 0, so no need to store this one
+        # The value of a0 is temporarily stored in sscratch.
         sd ra, 40(a0)
         sd sp, 48(a0)
         sd gp, 56(a0)
@@ -63,8 +75,11 @@ uservec:
         sd t6, 280(a0)
 
 	# save the user a0 in p->trapframe->a0
+        # This instruction only reads the value in sscratch,
+        # which is the old value of a0
         csrr t0, sscratch
         sd t0, 112(a0)
+        # Now all 32 general-purpose registers are stored
 
         # restore kernel stack pointer from p->trapframe->kernel_sp
         # When tracking the write() call of shell on boot, the address stored in $a0+8 is `0x3fffffc000`
@@ -80,6 +95,7 @@ uservec:
 
         # restore kernel page table from p->trapframe->kernel_satp
         ld t1, 0(a0)
+        # This instruction only writes the value of t1 into satp
         csrw satp, t1
         sfence.vma zero, zero
 
@@ -91,13 +107,15 @@ uservec:
 
 .globl userret
 userret:
+        # Called by usertrapret()
         # userret(TRAPFRAME, pagetable)
+        # a0 is TRAPFRAME, a1 is user pagetable
         # switch from kernel to user.
         # usertrapret() calls here.
         # a0: TRAPFRAME, in user page table.
         # a1: user page table, for satp.
 
-        # switch to the user page table.
+        # First: switch to the user page table.
         csrw satp, a1
         sfence.vma zero, zero
 
@@ -107,6 +125,7 @@ userret:
         csrw sscratch, t0
 
         # restore all but a0 from TRAPFRAME
+        # Now using the user pagetable.
         ld ra, 40(a0)
         ld sp, 48(a0)
         ld gp, 56(a0)
