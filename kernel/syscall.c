@@ -19,7 +19,7 @@ fetchaddr(uint64 addr, uint64 *ip)
   return 0;
 }
 
-// Fetch the nul-terminated string at addr from the current process.
+// Fetch the nul-terminated string at addr from the current process (in user space)
 // Returns length of string, not including nul, or -1 for error.
 int
 fetchstr(uint64 addr, char *buf, int max)
@@ -31,6 +31,8 @@ fetchstr(uint64 addr, char *buf, int max)
   return strlen(buf);
 }
 
+// Used by argint, argaddr and argfd
+// to retrieve system call arguments
 static uint64
 argraw(int n)
 {
@@ -141,6 +143,7 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
+    // The return value would be put into register a0
     p->trapframe->a0 = syscalls[num]();
   } else {
     printf("%d %s: unknown sys call %d\n",

@@ -99,7 +99,10 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 
 // Look up a virtual address, return the physical address,
 // or 0 if not mapped.
-// Can only be used to look up user pages.
+// Can only be used to look up user pages!
+// Called by `copyinstr`.
+// As it checks the user pagetable, the user program cannot trick the kernel
+// by passing illegal address as system call arguments
 uint64
 walkaddr(pagetable_t pagetable, uint64 va)
 {
@@ -390,6 +393,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   return 0;
 }
 
+// Used by `fetchstr` in syscall.c
 // Copy a null-terminated string from user to kernel.
 // Copy bytes to dst from virtual address srcva in a given page table,
 // until a '\0', or max.
@@ -401,13 +405,18 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   int got_null = 0;
 
   while(got_null == 0 && max > 0){
+    // NOTE:
+    // Can only copy WITHIN a single physical page per iteration,
+    // because when crossing a page-boundary in the user virtual address space,
+    // we need to revoke walkaddr() to translate user va to pa
+    // thus preventing cross-page continuous copying.
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);
     if(n > max)
-      n = max;
+      n = max;  // The max bytes that can be copied in this iteration
 
     char *p = (char *) (pa0 + (srcva - va0));
     while(n > 0){
@@ -424,6 +433,7 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
       dst++;
     }
 
+    // Update srcva here, for the next iteration
     srcva = va0 + PGSIZE;
   }
   if(got_null){
