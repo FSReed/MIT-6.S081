@@ -8,6 +8,7 @@
 6. [Syscall sbrk](https://github.com/FSReed/MIT-6.S081/commit/d01d4802bf6a42fc096cd74d62312435a0c00bb0) on branch `pgtbl`
 7. *(To be reviewed)*[`exec`](https://github.com/FSReed/MIT-6.S081/commit/384052d0a5e4b9c8945f2ffde19a5efc6d8c4530) on branch `pgtbl`
 8. [Traps from user space](https://github.com/FSReed/MIT-6.S081/commit/ecbbdb4b8207a0ed23aa18259a4bee4ec7d79e19) on branch `traps`
+9. [System call arguments](https://github.com/FSReed/MIT-6.S081/commit/57ab726948c480f50afcc1e8cfbff173cffff2e1) on branch `traps`
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
