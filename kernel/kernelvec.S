@@ -9,6 +9,8 @@
 .align 4
 kernelvec:
         // make room to save registers.
+        // kernelvel relies on: satp being set to the kernel pagetable,
+        // and sp pointing to a valid kernel stack
         addi sp, sp, -256
 
         // save the registers.
