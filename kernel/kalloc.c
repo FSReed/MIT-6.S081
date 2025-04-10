@@ -14,6 +14,10 @@ void freerange(void *pa_start, void *pa_end);
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
 
+// There are 128MB free memory in xv6, defined in memlayout.h:39-40
+// As there are at most 64 processes in xv6,
+// 8 bits would be sufficient to store the reference count of a physical page,
+// so I choose a char array.
 struct run {
   struct run *next;
 };
@@ -21,12 +25,14 @@ struct run {
 struct {
   struct spinlock lock;
   struct run *freelist;
+  char ref[(PHYSTOP - KERNBASE) >> 12]; // physical page ref count
 } kmem;
 
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
+  memset(kmem.ref, 1, (PHYSTOP - KERNBASE) >> 12);  // Set the reference count to 0
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -51,14 +57,19 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
-  // Fill with junk to catch dangling refs.
-  memset(pa, 1, PGSIZE);
-
-  r = (struct run*)pa;
-
+  uint64 position = (uint64)(pa - KERNBASE) >> 12;
   acquire(&kmem.lock);
-  r->next = kmem.freelist;
-  kmem.freelist = r;
+  if (kmem.ref[position] == 1) {
+    // If ref count of this page is more than 1, don't actually free it.
+
+    // Fill with junk to catch dangling refs.
+    memset(pa, 1, PGSIZE);
+    r = (struct run*)pa;
+
+    r->next = kmem.freelist;
+    kmem.freelist = r;
+  }
+  kmem.ref[position] -= 1;
   release(&kmem.lock);
 }
 
@@ -72,11 +83,27 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r) {
     kmem.freelist = r->next;
+    uint64 position = ((uint64)r - KERNBASE) >> 12;
+    if (kmem.ref[position] != 0) {
+      panic("kalloc: page already allocated");
+    }
+    kmem.ref[position] = 1; // This is a newly allocated page, its ref_count would be 1.
+  }
   release(&kmem.lock);
 
-  if(r)
+  if(r) {
     memset((char*)r, 5, PGSIZE); // fill with junk
+  }
   return (void*)r;
+}
+
+// New function, for COW
+void
+kmeminc(void* pa) {
+  uint64 position = (uint64)(pa - KERNBASE) >> 12;
+  acquire(&kmem.lock);
+  kmem.ref[position] += 1;
+  release(&kmem.lock);
 }

@@ -192,7 +192,7 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       uint64 pa = PTE2PA(*pte);
-      kfree((void*)pa);
+      kfree((void*)pa); // Let kfree deal with page reference number
     }
     *pte = 0;
   }
@@ -315,7 +315,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
+//  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -324,13 +324,31 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    // If the parent's page is not writable,
+    // this is not a cow page
+    if (flags & PTE_W) {
+      // Clear the PTE_W bit, set the PTE_F bit for both pagetables
+      flags = flags | PTE_F;
+      flags = flags & (~PTE_W);
+      // Modify the old pagetable's pte flags, without disrupting the PPN
+      // Can't use *pte &= flags or *pte |= flags
+      // The easiest way to do this:
+      // uvmunmap(old, i, 1, 0);
+      // mappages(old, i, PGSIZE, pa, flags);
+      // But I don't like it. I choose:
+      *pte &= (~0x3ff); // Clear the flags
+      *pte += flags;
+    }
+//    if((mem = kalloc()) == 0)
+//      goto err;
+//    memmove(mem, (char*)pa, PGSIZE);
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
+//      kfree(mem);
       goto err;
     }
+    // I think only fork() needs to increase the physical page ref count,
+    // so I decide to call kmeminc() in kalloc.c to increase the ref count.
+    kmeminc((void *)pa);
   }
   return 0;
 
@@ -366,10 +384,19 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     if(va0 >= MAXVA)
       return -1;
     pte = walk(pagetable, va0, 0);
-    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0 ||
-       (*pte & PTE_W) == 0)
+    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0)
       return -1;
-    pa0 = PTE2PA(*pte);
+    if ((*pte & PTE_W) == 0) {
+      if (*pte & PTE_F) {
+        // This is a COW page
+        if (uvmcowremap(pagetable, va0) != 0) {
+          return -1;
+        }
+      } else {
+        return -1;
+      }
+    }
+    pa0 = walkaddr(pagetable, va0);
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
@@ -448,4 +475,34 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
   } else {
     return -1;
   }
+}
+
+// alloc a new physical page for COW pages
+int
+uvmcowremap(pagetable_t pagetable, uint64 va) {
+  char* mem;
+  if ((mem = (char *)kalloc()) == 0) {
+    return -1;
+  }
+
+  pte_t *pte;
+  uint64 pa, flags;
+  va = PGROUNDDOWN(va);
+  if ((pte = walk(pagetable, va, 0)) == 0) {
+    panic("uvmcowremap: pte should exist");
+  }
+  if ((*pte & PTE_F) == 0) {
+    panic("uvmcowremap: should be a COW page");
+  }
+
+  pa = PTE2PA(*pte);
+  flags = PTE_FLAGS(*pte);
+  flags &= ~PTE_F;
+  flags |= PTE_W;
+  memmove(mem, (void *)pa, PGSIZE);
+  uvmunmap(pagetable, va, 1, 1);
+  if (mappages(pagetable, va, PGSIZE, (uint64)mem, flags) != 0) {
+    panic("uvmcowremap: mappages failed");
+  }
+  return 0;
 }

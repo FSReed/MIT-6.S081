@@ -67,6 +67,35 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if (r_scause() == 15) {
+    // Store/AMO page fault
+    uint64 va;
+    pte_t *pte;
+
+    va = r_stval();
+    va = PGROUNDDOWN(va);
+    do {
+      if (va >= MAXVA) {
+        printf("usertrap: stval bigger than MAXVA\n");
+        setkilled(p);
+        break;
+      }
+      if ((pte = walk(p->pagetable, va, 0)) == 0) {
+        printf("usertrap: pte should exist\n");
+        setkilled(p);
+        break;
+      }
+      if ((*pte & PTE_F) == 0) {
+        printf("usertrap: store page fault on no-COW page\n");
+        setkilled(p);
+        break;
+      }
+      if (uvmcowremap(p->pagetable, va) != 0) {
+        printf("usertrap: failed to remap a COW page\n");
+        setkilled(p);
+        break;
+      }
+    } while (0);
   } else {
     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
