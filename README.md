@@ -6,12 +6,14 @@
 4. [Setup kernel address space](https://github.com/FSReed/MIT-6.S081/commit/93ac884e3f0129f6b96edaa83dc219800b96e5f9) on branch `pgtbl`
 5. [Memory Allocator](https://github.com/FSReed/MIT-6.S081/commit/abe554a7e6fc5a551e63502bf728a467ad4b1d34) on branch `pgtbl`
 6. [Syscall sbrk](https://github.com/FSReed/MIT-6.S081/commit/d01d4802bf6a42fc096cd74d62312435a0c00bb0) on branch `pgtbl`
-7. *(To be reviewed)*[`exec`](https://github.com/FSReed/MIT-6.S081/commit/384052d0a5e4b9c8945f2ffde19a5efc6d8c4530) on branch `pgtbl`
+7. *(To be reviewed)* [`exec`](https://github.com/FSReed/MIT-6.S081/commit/384052d0a5e4b9c8945f2ffde19a5efc6d8c4530) on branch `pgtbl`
 8. [Traps from user space](https://github.com/FSReed/MIT-6.S081/commit/ecbbdb4b8207a0ed23aa18259a4bee4ec7d79e19) on branch `traps`
 9. [System call arguments](https://github.com/FSReed/MIT-6.S081/commit/57ab726948c480f50afcc1e8cfbff173cffff2e1) on branch `traps`
 10. [Traps from kernel space](https://github.com/FSReed/MIT-6.S081/commit/1ce3073b14fb976dabb996e54a1577bd8bd74fb0) on branch `traps`
 11. [Copy-On-Write](https://github.com/FSReed/MIT-6.S081/commit/0a4142f4c40cf745b319be0d1533d904f669ddd0), `cow` lab of 2024! It took me about 9 hours in total to finish this lab for the second time. The given commit gathers all the changes to the project.  
-   The progress of me doing this lab of 2020 can be seen on branch `cow`.
+    The progress of me doing this lab of 2020 can be seen on branch `cow`.
+12. *(To be reviewed)* [Lazy Allocation (2020 Lab)](https://github.com/FSReed/MIT-6.S081/commit/330ee169ca092ee87cf934409d00f10dd596696f) on branch `lazy`.
+    Pass `lazytests`, but some tests in `usertests` failed: `sbrkarg` and `sbrk8000`. `sbrkarg` failed on `write()` call, but it seems like no page-faults are captured by `usertrap`. I don't know why.
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
