@@ -287,6 +287,21 @@ growproc(int n)
   return 0;
 }
 
+// growproc, with lazy-allocation
+int
+lazy_growproc(int n)
+{
+  uint sz;
+  struct proc *p = myproc();
+
+  sz = myproc()->sz;
+  if (n < 0) {
+      uvmdealloc(p->pagetable, sz, sz + n);
+  }
+    p->sz = sz + n;
+  return 0;
+}
+
 // Create a new process, copying the parent.
 // Sets up child kernel stack to return as if from fork() system call.
 int

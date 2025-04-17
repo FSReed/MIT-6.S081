@@ -75,6 +75,40 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if (r_scause() == 13 || r_scause() == 15) {
+    // Page fault
+    // Don't make assumptions about user programs,
+    // e.g., they may read uninitialized memory (like `sbrkmuch` in usertests)
+    uint64 va = r_stval();
+    do {
+      if (va >= p->sz) {
+        // This is an invalidate address
+        p->killed = 1;
+        break;
+      }
+
+      if (uvmguardpage(p->pagetable, va)) {
+        // This is a guard page
+        p->killed = 1;
+        break;
+      }
+      // This page should be lazy allocated.
+      // Give it one page:
+      char* mem;
+      if ((mem = kalloc()) == 0) {
+        p->killed = 1;
+        break;
+      }
+      memset(mem, 0, PGSIZE);
+
+      uint64 flags = PTE_U | PTE_W | PTE_R;
+      va = PGROUNDDOWN(va);
+
+      if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, flags) != 0) {
+        p->killed = 1;
+        break;
+      }
+    } while (0);
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
