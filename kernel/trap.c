@@ -66,6 +66,8 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
+    // Checks if it's an external interrupt, or a software interrupt.
+    // If the return value is not 0, the interrupt is already handled by devintr
     // ok
   } else {
 
@@ -185,10 +187,11 @@ devintr()
      (scause & 0xff) == 9){
     // this is a supervisor external interrupt, via PLIC.
 
-    // irq indicates which device interrupted.
+    // Ask PLIC to tell which device interrupted.
     int irq = plic_claim();
 
     if(irq == UART0_IRQ){
+      // UART interrupt
       uartintr();
     } else if(irq == VIRTIO0_IRQ){
       virtio_disk_intr();

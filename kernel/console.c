@@ -71,9 +71,9 @@ consolewrite(int user_src, uint64 src, int n)
 }
 
 //
-// user read()s from the console go here.
+// NOTE: user read()s from the console go here.
 // copy (up to) a whole input line to dst.
-// user_dist indicates whether dst is a user
+// user_dst indicates whether dst is a user
 // or kernel address.
 //
 int
@@ -93,6 +93,7 @@ consoleread(int user_dst, uint64 dst, int n)
         release(&cons.lock);
         return -1;
       }
+      // consoleintr() would wake up consoleread() if a whole line arrives
       sleep(&cons.r, &cons.lock);
     }
 
@@ -123,11 +124,12 @@ consoleread(int user_dst, uint64 dst, int n)
   }
   release(&cons.lock);
 
+  // Return to user space (via the system call machinary)
   return target - n;
 }
 
 //
-// the console input interrupt handler.
+// NOTE: the console input interrupt handler.
 // uartintr() calls this for input character.
 // do erase/kill processing, append to cons.buf,
 // wake up consoleread() if a whole line has arrived.
@@ -159,7 +161,7 @@ consoleintr(int c)
     if(c != 0 && cons.e-cons.r < INPUT_BUF){
       c = (c == '\r') ? '\n' : c;
 
-      // echo back to the user.
+      // print this character onto the screen! Treat BACKSPACE specially.
       consputc(c);
 
       // store for consumption by consoleread().
@@ -168,6 +170,7 @@ consoleintr(int c)
       if(c == '\n' || c == C('D') || cons.e == cons.r+INPUT_BUF){
         // wake up consoleread() if a whole line (or end-of-file)
         // has arrived.
+        // Or the buffer is full (cons.e == cons.r + INPUT_BUF)
         cons.w = cons.e;
         wakeup(&cons.r);
       }
@@ -183,6 +186,7 @@ consoleinit(void)
 {
   initlock(&cons.lock, "cons");
 
+  // initialize the UART hardware
   uartinit();
 
   // connect read and write system calls

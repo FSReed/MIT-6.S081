@@ -72,6 +72,8 @@ uartinit(void)
   WriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
   // enable transmit and receive interrupts.
+  // receive interrupt: when the UART receives each byte of input;
+  // transmit complete interrupt: each time the UART finished sending a byte of output
   WriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
 
   initlock(&uart_tx_lock, "uart");
