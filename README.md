@@ -15,6 +15,7 @@
 12. *(To be reviewed)* [Lazy Allocation (2020 Lab)](https://github.com/FSReed/MIT-6.S081/commit/330ee169ca092ee87cf934409d00f10dd596696f) on branch `lazy`.
     Pass `lazytests`, but some tests in `usertests` failed: `sbrkarg` and `sbrk8000`. `sbrkarg` failed on `write()` call, but it seems like no page-faults are captured by `usertrap`. I don't know why.
 13. [Console input](https://github.com/FSReed/MIT-6.S081/commit/1e64b691928f43da128e15a2d7b852d984c6f702) on branch `net`
+14. [Console output](https://github.com/FSReed/MIT-6.S081/commit/f417d353b1a8867d0c654239499bd561df1c0096) on branch `net`
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
