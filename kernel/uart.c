@@ -95,12 +95,18 @@ uartputc(int c)
       ;
   }
 
+  // As long as the buffer is not empty, uartputc will keep sending characters to the buffer
+  // Assuming UART is slow, uartstart() won't block because it would return immediately if UART is busy
+  // In this case, uartputc might put all characters in the buffer then return,
+  // meanwhile, UART keeps processing these characters, and will be called by uartintr rather than uartputc
   while(1){
     if(uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE){
       // buffer is full.
       // wait for uartstart() to open up space in the buffer.
       sleep(&uart_tx_r, &uart_tx_lock);
     } else {
+      // gets free space in buffer,
+      // (wakeup and) fill the buffer
       uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE] = c;
       uart_tx_w += 1;
       uartstart();
@@ -149,6 +155,9 @@ uartstart()
       // the UART transmit holding register is full,
       // so we cannot give it another byte.
       // it will interrupt when it's ready for a new byte.
+      // So if UART is really slow, uartstart might return in this step,
+      // after UART finished its job, it will raise an interrupt,
+      // then uartintr will call uartstart, to send characters to UART again.
       return;
     }
     
@@ -158,7 +167,10 @@ uartstart()
     // maybe uartputc() is waiting for space in the buffer.
     wakeup(&uart_tx_r);
     
+    // Send this character to UART hardware.
+    // As UART is processing this character, CPU can proceed with other tasks
     WriteReg(THR, c);
+    // Won't wait UART to finish its job, CPU moves on.
   }
 }
 
@@ -178,6 +190,7 @@ uartgetc(void)
 // handle a uart interrupt, raised because input has
 // arrived, or the uart is ready for more output, or
 // both. called from trap.c.
+// NOTE: uartintr handles both the receive interrupt and the transmit interrupt
 void
 uartintr(void)
 {
