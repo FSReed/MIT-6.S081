@@ -135,6 +135,7 @@ consoleread(int user_dst, uint64 dst, int n)
 void
 consoleintr(int c)
 {
+  // Acquire console lock to handle typed characters
   acquire(&cons.lock);
 
   switch(c){
@@ -169,6 +170,7 @@ consoleintr(int c)
         // wake up consoleread() if a whole line (or end-of-file)
         // has arrived.
         cons.w = cons.e;
+        // Wake up sleeping processes, need to acquire process's lock
         wakeup(&cons.r);
       }
     }
