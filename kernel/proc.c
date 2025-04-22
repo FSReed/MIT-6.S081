@@ -573,7 +573,7 @@ sleep(void *chan, struct spinlock *lk)
   // so it's okay to release lk.
 
   acquire(&p->lock);  //DOC: sleeplock1
-  release(lk); // Release the spinlock, won't cause deadlock
+  release(lk); // Release the spinlock to prevent deadlock
 
   // Go to sleep.
   p->chan = chan;
@@ -582,10 +582,10 @@ sleep(void *chan, struct spinlock *lk)
   sched();
 
   // Tidy up.
-  // Now the process is waken up
+  // *Now the process is waken up*
   p->chan = 0;
 
-  // Reacquire original lock.
+  // *Reacquire original lock.*
   release(&p->lock);
   acquire(lk);
 }
@@ -601,6 +601,9 @@ wakeup(void *chan)
     if(p != myproc()){
       // Acquire process lock
       // So cons.lock must be acquired before any process lock
+
+      // As `sleep` will acquire p->lock,
+      // this wouldn't cause a lost wake-up
       acquire(&p->lock);
       if(p->state == SLEEPING && p->chan == chan) {
         p->state = RUNNABLE;
