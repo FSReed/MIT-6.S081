@@ -92,6 +92,7 @@ push_off(void)
 
   intr_off();
   if(mycpu()->noff == 0)
+    // whether interrupt is enabled before push_off()
     mycpu()->intena = old;
   mycpu()->noff += 1;
 }
