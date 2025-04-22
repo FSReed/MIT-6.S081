@@ -17,7 +17,8 @@
 13. [Console input](https://github.com/FSReed/MIT-6.S081/commit/1e64b691928f43da128e15a2d7b852d984c6f702) on branch `net`
 14. [Console output](https://github.com/FSReed/MIT-6.S081/commit/f417d353b1a8867d0c654239499bd561df1c0096) on branch `net`
 15. [Console lock order](https://github.com/FSReed/MIT-6.S081/commit/bde6190e310b2cbc6bfb5a13169f3e688b7ea6fe) on branch `thread`
-16. [`mycpu()` and `tp` register](https://github.com/FSReed/MIT-6.S081/commit/d7e257c5bf4b2d66507a89b6efb961b5b702d78c) on branch `thread`.
+16. [`mycpu()` and `tp` register](https://github.com/FSReed/MIT-6.S081/commit/d7e257c5bf4b2d66507a89b6efb961b5b702d78c) on branch `thread`
+17. [Context Switch](https://github.com/FSReed/MIT-6.S081/commit/ee695d603b20345068bfb4cc72776973a943c0f0) on branch `thread
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
