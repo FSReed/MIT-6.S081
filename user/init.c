@@ -39,10 +39,11 @@ main(void)
     for(;;){
       // this call to wait() returns if the shell exits,
       // or if a parentless process exits.
+      // wait on 0, don't care about child's exit state
       wpid = wait((int *) 0);
       if(wpid == pid){
         // the shell exited; restart it.
-        break;
+        break; // Loop back to line 27 to restart sh
       } else if(wpid < 0){
         printf("init: wait returned an error\n");
         exit(1);

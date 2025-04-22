@@ -347,7 +347,7 @@ reparent(struct proc *p)
 }
 
 // Exit the current process.  Does not return.
-// An exited process remains in the zombie state
+// **An exited process remains in the zombie state**
 // until its parent calls wait().
 void
 exit(int status)
@@ -371,9 +371,10 @@ exit(int status)
   end_op();
   p->cwd = 0;
 
+  // prevent the parent from losing the wake-up
   acquire(&wait_lock);
 
-  // Give any children to init.
+  // **Give any children to init.**
   reparent(p);
 
   // Parent might be sleeping in wait().
@@ -384,10 +385,13 @@ exit(int status)
   p->xstate = status;
   p->state = ZOMBIE;
 
+  // NOTE: The woken-up parent cannot acquire wait_lock before the child releases it,
+  // so it is safe to set p->xstate and p->state here.
+  // The parent cannot start searching for an exited child until the lock is released.
   release(&wait_lock);
 
   // Jump into the scheduler, never to return.
-  sched();
+  sched(); // With p->lock held, the parent will wait until the child totally exit.
   panic("zombie exit");
 }
 
@@ -400,6 +404,7 @@ wait(uint64 addr)
   int havekids, pid;
   struct proc *p = myproc();
 
+  // In case of lost wake-up
   acquire(&wait_lock);
 
   for(;;){
@@ -414,6 +419,9 @@ wait(uint64 addr)
         if(np->state == ZOMBIE){
           // Found one.
           pid = np->pid;
+          // Copy the children's exit state to *addr
+          // if addr == 0, it means the parent doesn't care about the exit state of the child,
+          // for example, initproc would wait on 0 (see user/init.c)
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&np->xstate,
                                   sizeof(np->xstate)) < 0) {
             release(&np->lock);
@@ -435,8 +443,11 @@ wait(uint64 addr)
       return -1;
     }
     
+    // Found a child, but it hasn't exited
     // Wait for a child to exit.
     sleep(p, &wait_lock);  //DOC: wait-sleep
+    // the exited child would wake up wait(),
+    // which will loop back to the start of this for loop
   }
 }
 
