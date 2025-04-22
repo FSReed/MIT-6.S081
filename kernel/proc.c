@@ -637,7 +637,12 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       if(p->state == SLEEPING){
-        // Wake process from sleep().
+        // Wake the process from sleep().
+        // Change the process's state instead of calling wakeup(),
+        // so the process may not be woken up in some cases.
+        // For example, sleep() is set inside a condition loop, but the condition is not yet met.
+        // Additionally, the condition loop may check if the process has been killed,
+        // and return immediately if it has been killed.
         p->state = RUNNABLE;
       }
       release(&p->lock);

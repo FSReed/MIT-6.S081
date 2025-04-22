@@ -268,7 +268,8 @@ virtio_disk_rw(struct buf *b, int write)
 
   *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
-  // Wait for virtio_disk_intr() to say request has finished.
+  // *Wait for virtio_disk_intr() to say request has finished.*
+  // If killed now, won't return immediately
   while(b->disk == 1) {
     sleep(b, &disk.vdisk_lock);
   }
