@@ -46,6 +46,7 @@ start()
   // ask for clock interrupts.
   timerinit();
 
+  // In machine mode, sets the tp register
   // keep each CPU's hartid in its tp register, for cpuid().
   int id = r_mhartid();
   w_tp(id);

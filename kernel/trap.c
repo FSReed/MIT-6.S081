@@ -104,6 +104,9 @@ usertrapret(void)
   p->trapframe->kernel_satp = r_satp();         // kernel page table
   p->trapframe->kernel_sp = p->kstack + PGSIZE; // process's kernel stack
   p->trapframe->kernel_trap = (uint64)usertrap;
+  // Crutial synchronization point,
+  // Even a process switches to another CPU, usertrapret would first update tp in the trapframe
+  // So uservec would always load the correct tp!
   p->trapframe->kernel_hartid = r_tp();         // hartid for cpuid()
 
   // set up the registers that trampoline.S's sret will use
