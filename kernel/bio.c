@@ -1,4 +1,4 @@
-// Buffer cache.
+// *Buffer cache.*
 //
 // The buffer cache is a linked list of buf structures holding
 // cached copies of disk block contents.  Caching disk blocks
@@ -23,16 +23,18 @@
 #include "fs.h"
 #include "buf.h"
 
+// Buffer cache
 struct {
   struct spinlock lock;
   struct buf buf[NBUF];
 
   // Linked list of all buffers, through prev/next.
   // Sorted by how recently the buffer was used.
-  // head.next is most recent, head.prev is least.
+  // *head.next is most recent, head.prev is least.*
   struct buf head;
 } bcache;
 
+// Called by main()
 void
 binit(void)
 {
@@ -40,7 +42,7 @@ binit(void)
 
   initlock(&bcache.lock, "bcache");
 
-  // Create linked list of buffers
+  // Create doubly-linked list of buffers
   bcache.head.prev = &bcache.head;
   bcache.head.next = &bcache.head;
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
@@ -62,7 +64,9 @@ bget(uint dev, uint blockno)
 
   acquire(&bcache.lock);
 
-  // Is the block already cached?
+  // *Is the block already cached?*
+  // Start checking from the **most** recently used buffers,
+  // which will reduce the scan time when there is good locality of reference
   for(b = bcache.head.next; b != &bcache.head; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
@@ -72,13 +76,13 @@ bget(uint dev, uint blockno)
     }
   }
 
-  // Not cached.
-  // Recycle the least recently used (LRU) unused buffer.
+  // *Recycle the least recently used (LRU) unused buffer.*
+  // Start checking from the **least** recently used buffers
   for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
     if(b->refcnt == 0) {
       b->dev = dev;
       b->blockno = blockno;
-      b->valid = 0;
+      b->valid = 0; // Won't use the buffer's previous contents
       b->refcnt = 1;
       release(&bcache.lock);
       acquiresleep(&b->lock);
@@ -94,15 +98,17 @@ bread(uint dev, uint blockno)
 {
   struct buf *b;
 
+  // call bget() to get a buffer
   b = bget(dev, blockno);
   if(!b->valid) {
+    // Read from the disk
     virtio_disk_rw(b, 0);
     b->valid = 1;
   }
   return b;
 }
 
-// Write b's contents to disk.  Must be locked.
+// *Write b's contents to disk.  Must be locked.*
 void
 bwrite(struct buf *b)
 {
@@ -119,12 +125,14 @@ brelse(struct buf *b)
   if(!holdingsleep(&b->lock))
     panic("brelse");
 
+  // Release the sleep lock acquired in bread()
   releasesleep(&b->lock);
 
   acquire(&bcache.lock);
   b->refcnt--;
   if (b->refcnt == 0) {
     // no one is waiting for it.
+    // Move the buffer to the most recently used buffer
     b->next->prev = b->prev;
     b->prev->next = b->next;
     b->next = bcache.head.next;
