@@ -577,7 +577,9 @@ dirlookup(struct inode *dp, char *name, uint *poff)
   if(dp->type != T_DIR)
     panic("dirlookup not DIR");
 
+  // `off` grow by sizeof(directory entry) each time
   for(off = 0; off < dp->size; off += sizeof(de)){
+    // A directory's data is a sequence of `struct dirent`
     if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
       panic("dirlookup read");
     if(de.inum == 0)
@@ -594,7 +596,7 @@ dirlookup(struct inode *dp, char *name, uint *poff)
   return 0;
 }
 
-// Write a new directory entry (name, inum) into the directory dp.
+// *Write a new directory entry (name, inum) into the directory dp.*
 int
 dirlink(struct inode *dp, char *name, uint inum)
 {
@@ -608,7 +610,7 @@ dirlink(struct inode *dp, char *name, uint inum)
     return -1;
   }
 
-  // Look for an empty dirent.
+  // *Look for an empty dirent.*
   for(off = 0; off < dp->size; off += sizeof(de)){
     if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
       panic("dirlink read");
@@ -616,6 +618,7 @@ dirlink(struct inode *dp, char *name, uint inum)
       break;
   }
 
+  // Initialize this directory entry, write it into the directory inode
   strncpy(de.name, name, DIRSIZ);
   de.inum = inum;
   if(writei(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
