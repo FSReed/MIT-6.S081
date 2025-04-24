@@ -86,17 +86,31 @@ balloc(uint dev)
 }
 
 // Free a disk block.
+// Filled with bit-wise calculations :(
 static void
 bfree(int dev, uint b)
 {
   struct buf *bp;
   int bi, m;
 
+  // NOTE: This bp is a free bitmap block
+  // Read the block containing the bitmap for the given block number `b`
   bp = bread(dev, BBLOCK(b, sb));
+
+  // Calculate the index of the block `b` within its bitmap block (bi = block index)
   bi = b % BPB;
+
+  // Create a bitmask `m` with a 1 at the position corresponding to this block's bit within the byte
   m = 1 << (bi % 8);
+
+  // bp->data[bi/8]:
+  // The `bi/8`th char in the free map block
+  // Access the byte in the bitmap data that contains the bit representing block `b`
+  // Each byte represents 8 blocks, so divide `bi` by 8 to find the correct byte
   if((bp->data[bi/8] & m) == 0)
     panic("freeing free block");
+
+  // Clear the bit in the bitmap to mark this block as free
   bp->data[bi/8] &= ~m;
   log_write(bp);
   brelse(bp);
@@ -381,14 +395,14 @@ iunlockput(struct inode *ip)
   iput(ip);
 }
 
-// Inode content
+// *Inode content*
 //
 // The content (data) associated with each inode is stored
 // in blocks on the disk. The first NDIRECT block numbers
 // are listed in ip->addrs[].  The next NINDIRECT blocks are
 // listed in block ip->addrs[NDIRECT].
 
-// Return the disk block address of the nth block in inode ip.
+// *Return the disk block address of the nth block in inode ip.*
 // If there is no such block, bmap allocates one.
 static uint
 bmap(struct inode *ip, uint bn)
@@ -397,6 +411,7 @@ bmap(struct inode *ip, uint bn)
   struct buf *bp;
 
   if(bn < NDIRECT){
+    // in direct blocks
     if((addr = ip->addrs[bn]) == 0)
       ip->addrs[bn] = addr = balloc(ip->dev);
     return addr;
@@ -404,12 +419,16 @@ bmap(struct inode *ip, uint bn)
   bn -= NDIRECT;
 
   if(bn < NINDIRECT){
-    // Load indirect block, allocating if necessary.
+    // Load indirect block, *allocating if necessary.*
     if((addr = ip->addrs[NDIRECT]) == 0)
+      // Allocate the indirect block (index block) itself
       ip->addrs[NDIRECT] = addr = balloc(ip->dev);
     bp = bread(ip->dev, addr);
+    // bp->data is of type uchar[], need to be converted to uint[]
     a = (uint*)bp->data;
+    // bp contains only addresses of the disk block
     if((addr = a[bn]) == 0){
+      // Allocate an entry in the indirect block
       a[bn] = addr = balloc(ip->dev);
       log_write(bp);
     }
@@ -429,6 +448,7 @@ itrunc(struct inode *ip)
   struct buf *bp;
   uint *a;
 
+  // Free direct blocks
   for(i = 0; i < NDIRECT; i++){
     if(ip->addrs[i]){
       bfree(ip->dev, ip->addrs[i]);
@@ -436,6 +456,7 @@ itrunc(struct inode *ip)
     }
   }
 
+  // Free indirect block entries
   if(ip->addrs[NDIRECT]){
     bp = bread(ip->dev, ip->addrs[NDIRECT]);
     a = (uint*)bp->data;
@@ -444,10 +465,12 @@ itrunc(struct inode *ip)
         bfree(ip->dev, a[j]);
     }
     brelse(bp);
+    // Free the indirect block itself
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
   }
 
+  // Set the file size to 0
   ip->size = 0;
   iupdate(ip);
 }
@@ -481,6 +504,8 @@ readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
 
   for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
     bp = bread(ip->dev, bmap(ip, off/BSIZE));
+    // the maximum byte to write in each round is `BSIZE-off%BSIZE`.
+    // but also no more than the remaining bytes: n - tot
     m = min(n - tot, BSIZE - off%BSIZE);
     if(either_copyout(user_dst, dst, bp->data + (off % BSIZE), m) == -1) {
       brelse(bp);
@@ -521,6 +546,7 @@ writei(struct inode *ip, int user_src, uint64 src, uint off, uint n)
     brelse(bp);
   }
 
+  // Different from readi. File size might grow.
   if(off > ip->size)
     ip->size = off;
 
