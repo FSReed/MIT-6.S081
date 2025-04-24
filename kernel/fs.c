@@ -171,6 +171,7 @@ bfree(int dev, uint b)
 // dev, and inum.  One must hold ip->lock in order to
 // read or write that inode's ip->valid, ip->size, ip->type, &c.
 
+// Keeps the set of active inodes in a table
 struct {
   struct spinlock lock;
   struct inode inode[NINODE];
@@ -189,7 +190,7 @@ iinit()
 
 static struct inode* iget(uint dev, uint inum);
 
-// Allocate an inode on device dev.
+// *Allocate an inode on device dev.*
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode.
 struct inode*
@@ -200,14 +201,16 @@ ialloc(uint dev, short type)
   struct dinode *dip;
 
   for(inum = 1; inum < sb.ninodes; inum++){
-    bp = bread(dev, IBLOCK(inum, sb));
-    dip = (struct dinode*)bp->data + inum%IPB;
+    bp = bread(dev, IBLOCK(inum, sb)); // read the block that contains inode inum
+    dip = (struct dinode*)bp->data + inum%IPB; // Load the on-disk inode
     if(dip->type == 0){  // a free inode
+      // bread returns a block which is **locked**,
+      // so other processes won't see this inode as available
       memset(dip, 0, sizeof(*dip));
       dip->type = type;
       log_write(bp);   // mark it allocated on the disk
       brelse(bp);
-      return iget(dev, inum);
+      return iget(dev, inum); // Get an in-memory copy of inode
     }
     brelse(bp);
   }
@@ -237,8 +240,9 @@ iupdate(struct inode *ip)
 }
 
 // Find the inode with number inum on device dev
-// and return the in-memory copy. Does not lock
-// the inode and does not read it from disk.
+// and return the in-memory copy. **Does not lock
+// the inode and does not read it from disk**,
+// which will be done by ilock()
 static struct inode*
 iget(uint dev, uint inum)
 {
@@ -250,8 +254,9 @@ iget(uint dev, uint inum)
   empty = 0;
   for(ip = &itable.inode[0]; ip < &itable.inode[NINODE]; ip++){
     if(ip->ref > 0 && ip->dev == dev && ip->inum == inum){
-      ip->ref++;
+      ip->ref++; // This operation is protected by itable.lock
       release(&itable.lock);
+      // Multiple processes may have a reference to this inode
       return ip;
     }
     if(empty == 0 && ip->ref == 0)    // Remember empty slot.
@@ -262,6 +267,7 @@ iget(uint dev, uint inum)
   if(empty == 0)
     panic("iget: no inodes");
 
+  // Only the current process can see this inode is free
   ip = empty;
   ip->dev = dev;
   ip->inum = inum;
@@ -296,6 +302,8 @@ ilock(struct inode *ip)
 
   acquiresleep(&ip->lock);
 
+  // The current process has the exclusive access to the inode now
+  // Can read the inode from the disk (more likely, from the buffer cache) if needed
   if(ip->valid == 0){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
@@ -319,10 +327,10 @@ iunlock(struct inode *ip)
   if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
-  releasesleep(&ip->lock);
+  releasesleep(&ip->lock); // Wake up any process sleeping in ilock()
 }
 
-// Drop a reference to an in-memory inode.
+// **Drop a reference to an in-memory inode.**
 // If that was the last reference, the inode table entry can
 // be recycled.
 // If that was the last reference and the inode has no links
@@ -332,6 +340,7 @@ iunlock(struct inode *ip)
 void
 iput(struct inode *ip)
 {
+  // First acquire the itable lock, to locate the inode
   acquire(&itable.lock);
 
   if(ip->ref == 1 && ip->valid && ip->nlink == 0){
@@ -339,6 +348,7 @@ iput(struct inode *ip)
 
     // ip->ref == 1 means no other process can have ip locked,
     // so this acquiresleep() won't block (or deadlock).
+    // have this inode locked, for the following operations
     acquiresleep(&ip->lock);
 
     release(&itable.lock);
@@ -346,15 +356,21 @@ iput(struct inode *ip)
     itrunc(ip);
     ip->type = 0;
     iupdate(ip);
+    // Now ialloc() may find this inode to be free, which is a benign race condition
+    // iput is still holding the inode's lock, so the allocating thread will wait
+    // until iput completes before performing any read or write operations.
     ip->valid = 0;
 
+    // Release the lock to the inode, other threads can use it.
     releasesleep(&ip->lock);
 
+    // Acquire itable lock to update the reference count of this inode
     acquire(&itable.lock);
   }
 
   ip->ref--;
   release(&itable.lock);
+  // Done
 }
 
 // Common idiom: unlock, then put.
