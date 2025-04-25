@@ -629,10 +629,10 @@ dirlink(struct inode *dp, char *name, uint inum)
 
 // Paths
 
-// Copy the next path element from path into name.
+// *Copy the next path element from path into name.*
 // Return a pointer to the element following the copied one.
 // The returned path has no leading slashes,
-// so the caller can check *path=='\0' to see if the name is the last one.
+// *so the caller can check *path=='\0' to see if the name is the last one.*
 // If no name to remove, return 0.
 //
 // Examples:
@@ -680,8 +680,21 @@ namex(char *path, int nameiparent, char *name)
   else
     ip = idup(myproc()->cwd);
 
+  // namex locks each directory separately,
+  // so that lookups in different threads can proceed in parallel
+  // But this concurrency introduces some risks:
+  // what if another kernel thread modifies the directory structure?
+  //
+  // Can other threads modify the directory structure during lookup?
+  // YES. Because xv6 supports such parallelism.
+  // BUT: Each loop would call iget() to increase the ref-count of the dirs in the path,
+  // so once an inode is found, it won't be deleted by xv6.
+  // The key concept is: (e.g., looking up ./A/B/C)
+  // Before a lookup reaches the file `C`, another thread may delete it,
+  // which will result in the lookup failing, and this is acceptable.
+  // However, once a lookup has successfully found `C`, it won't be deleted by xv6.
   while((path = skipelem(path, name)) != 0){
-    ilock(ip);
+    ilock(ip); // Lock ip to ensure ip->type has been loaded from disk
     if(ip->type != T_DIR){
       iunlockput(ip);
       return 0;
@@ -695,9 +708,14 @@ namex(char *path, int nameiparent, char *name)
       iunlockput(ip);
       return 0;
     }
+    // `next` might be the ip itself (e.g., lookup for `.` entry in a directory),
+    // so lock `next` before we unlock `ip` could cause a deadlock.
+    // This also shows the importance of separation between `iget` and `ilock`
     iunlockput(ip);
     ip = next;
   }
+
+  // If parent != 0, namex should return inside the while loop
   if(nameiparent){
     iput(ip);
     return 0;
