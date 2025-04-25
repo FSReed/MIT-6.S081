@@ -122,6 +122,7 @@ sys_link(void)
   char name[DIRSIZ], new[MAXPATH], old[MAXPATH];
   struct inode *dp, *ip;
 
+  // Two arguments: (old, new)
   if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
     return -1;
 
@@ -132,6 +133,7 @@ sys_link(void)
   }
 
   ilock(ip);
+  // Cannot link a directory
   if(ip->type == T_DIR){
     iunlockput(ip);
     end_op();
@@ -145,6 +147,10 @@ sys_link(void)
   if((dp = nameiparent(new, name)) == 0)
     goto bad;
   ilock(dp);
+  // Two inodes must be on the same device.
+  // Create a link named `name` under new's parent directory,
+  // but points to the old's inode
+  // inode numbers only have a unique meaning on a single disk
   if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
     iunlockput(dp);
     goto bad;
@@ -158,6 +164,7 @@ sys_link(void)
 
 bad:
   ilock(ip);
+  // Something wrong happened, decrease the ip's nlink
   ip->nlink--;
   iupdate(ip);
   iunlockput(ip);
@@ -238,6 +245,8 @@ bad:
   return -1;
 }
 
+// Create a new inode.
+// return a **LOCKED** inode
 static struct inode*
 create(char *path, short type, short major, short minor)
 {
@@ -247,20 +256,27 @@ create(char *path, short type, short major, short minor)
   if((dp = nameiparent(path, name)) == 0)
     return 0;
 
+  // Lock directory inode, till the end
   ilock(dp);
 
+  // Check if the inode exists
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
     ilock(ip);
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
+      // A regular file, won't cause an error in sys_open
       return ip;
     iunlockput(ip);
     return 0;
   }
 
+  // allocate a new inode
   if((ip = ialloc(dp->dev, type)) == 0)
     panic("create: ialloc");
 
+  // Lock ip, now holds 2 locks: both ip and dp
+  // But this won't cause a deadlock (another process locks ip then try to lock dp)
+  // because it's impossible for other processes to hold this newly-allocated ip's lock
   ilock(ip);
   ip->major = major;
   ip->minor = minor;
@@ -270,7 +286,7 @@ create(char *path, short type, short major, short minor)
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
     iupdate(dp);
-    // No ip->nlink++ for ".": avoid cyclic ref count.
+    // **No ip->nlink++ for ".": avoid cyclic ref count.**
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
       panic("create dots");
   }
@@ -280,6 +296,7 @@ create(char *path, short type, short major, short minor)
 
   iunlockput(dp);
 
+  // NOTE: ip is still locked!
   return ip;
 }
 
@@ -292,6 +309,7 @@ sys_open(void)
   struct inode *ip;
   int n;
 
+  // 2 arguments: (path_name, mode)
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
@@ -304,10 +322,12 @@ sys_open(void)
       return -1;
     }
   } else {
+    // Don't create, open a file instead
     if((ip = namei(path)) == 0){
       end_op();
       return -1;
     }
+    // namei() doesn't return a **LOCKED** inode, sys_open needs to lock it itself
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
@@ -359,6 +379,7 @@ sys_mkdir(void)
 
   begin_op();
   if(argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+    // mkdir() treats an existing inode as an error
     end_op();
     return -1;
   }
