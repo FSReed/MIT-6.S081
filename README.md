@@ -26,6 +26,7 @@
 22. [In-memory inode](https://github.com/FSReed/MIT-6.S081/commit/206dd750e38d7a96ed9e6d68593a79cfd12a270d) on branch `fs`
 23. [Inode content](https://github.com/FSReed/MIT-6.S081/commit/da5aa779f592de1e6904dd646eefe04dd16bbbf7) on branch `fs`
 24. [Directory](https://github.com/FSReed/MIT-6.S081/commit/cf8cb68ff5a102dc1009d5a27be6dd789cd23f40) on branch `fs`
+25. [Path names](https://github.com/FSReed/MIT-6.S081/commit/025707c585c0a677b728ea56b651dcbcb0f650c2) on branch `fs`
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
