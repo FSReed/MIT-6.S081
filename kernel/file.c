@@ -13,6 +13,7 @@
 #include "stat.h"
 #include "proc.h"
 
+// Track all open files in the system
 struct devsw devsw[NDEV];
 struct {
   struct spinlock lock;
@@ -25,7 +26,7 @@ fileinit(void)
   initlock(&ftable.lock, "ftable");
 }
 
-// Allocate a file structure.
+// *Allocate a file structure.*
 struct file*
 filealloc(void)
 {
@@ -43,7 +44,7 @@ filealloc(void)
   return 0;
 }
 
-// Increment ref count for file f.
+// *Increment ref count for file f.*
 struct file*
 filedup(struct file *f)
 {
@@ -55,7 +56,7 @@ filedup(struct file *f)
   return f;
 }
 
-// Close file f.  (Decrement ref count, close when reaches 0.)
+// *Close file f.  (Decrement ref count, close when reaches 0.)*
 void
 fileclose(struct file *f)
 {
@@ -84,6 +85,7 @@ fileclose(struct file *f)
 
 // Get metadata about file f.
 // addr is a user virtual address, pointing to a struct stat.
+// only allowed on inodes
 int
 filestat(struct file *f, uint64 addr)
 {
@@ -116,6 +118,8 @@ fileread(struct file *f, uint64 addr, int n)
   } else if(f->type == FD_DEVICE){
     if(f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
       return -1;
+    // Device's read function,
+    // e.g., consoleinit() binds consoleread to console's read function
     r = devsw[f->major].read(1, addr, n);
   } else if(f->type == FD_INODE){
     ilock(f->ip);

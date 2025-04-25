@@ -1,3 +1,4 @@
+// Each open file represented as a `struct file`
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE, FD_DEVICE } type;
   int ref; // reference count
@@ -30,6 +31,8 @@ struct inode {
 };
 
 // map major device number to device functions.
+// have 2 functions, read and write
+// see how consoleinit() binds console's read and write in console.c
 struct devsw {
   int (*read)(int, uint64, int);
   int (*write)(int, uint64, int);
