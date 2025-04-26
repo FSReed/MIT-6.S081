@@ -39,10 +39,11 @@ struct logheader {
 
 struct log {
   struct spinlock lock;
-  int start;
+  int start;       // start is the beginning of the log block
+                   // which is set to superblock->logstart in initlog()
   int size;
-  int outstanding; // how many FS sys calls are executing.
-  int committing;  // in commit(), please wait.
+  int outstanding; // *how many FS sys calls are executing.*
+  int committing;  // in commit(), please wait.*
   int dev;
   struct logheader lh;
 };
@@ -51,6 +52,7 @@ struct log log;
 static void recover_from_log(void);
 static void commit();
 
+// Called by fsinit()
 void
 initlog(int dev, struct superblock *sb)
 {
@@ -58,7 +60,7 @@ initlog(int dev, struct superblock *sb)
     panic("initlog: too big logheader");
 
   initlock(&log.lock, "log");
-  log.start = sb->logstart;
+  log.start = sb->logstart; // Set log.start
   log.size = sb->nlog;
   log.dev = dev;
   recover_from_log();
@@ -97,8 +99,8 @@ read_head(void)
 }
 
 // Write in-memory log header to disk.
-// This is the true point at which the
-// current transaction commits.
+// **This is the true point at which the
+// current transaction commits.**
 static void
 write_head(void)
 {
@@ -113,6 +115,7 @@ write_head(void)
   brelse(buf);
 }
 
+// Called by initlock(), which is called by fsinit()
 static void
 recover_from_log(void)
 {
@@ -120,9 +123,13 @@ recover_from_log(void)
   install_trans(1); // if committed, copy from log to disk
   log.lh.n = 0;
   write_head(); // clear the log
+  // If the system is recovering,
+  // it performs a similar action to what `commit()` does.
+  // Now a `commit` in the logging layer is safely `pushed` to the disk
 }
 
 // called at the start of each FS system call.
+// wait until the logging system is not committing.
 void
 begin_op(void)
 {
@@ -132,6 +139,7 @@ begin_op(void)
       sleep(&log, &log.lock);
     } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE){
       // this op might exhaust log space; wait for commit.
+      // xv6 assumes that each syscall might write up to MAXOPBLOCKS blocks
       sleep(&log, &log.lock);
     } else {
       log.outstanding += 1;
@@ -181,10 +189,11 @@ write_log(void)
   int tail;
 
   for (tail = 0; tail < log.lh.n; tail++) {
-    struct buf *to = bread(log.dev, log.start+tail+1); // log block
+    // +1, because the first block is the log header block.
+    struct buf *to = bread(log.dev, log.start+tail+1); // *log block*
     struct buf *from = bread(log.dev, log.lh.block[tail]); // cache block
     memmove(to->data, from->data, BSIZE);
-    bwrite(to);  // write the log
+    bwrite(to);  // write the log into the disk
     brelse(from);
     brelse(to);
   }
@@ -193,12 +202,20 @@ write_log(void)
 static void
 commit()
 {
+  // Now `log.committing` is set,
+  // other threads cannot interrupt the committing process.
   if (log.lh.n > 0) {
     write_log();     // Write modified blocks from cache to log
-    write_head();    // Write header to disk -- the real commit
+    // write_log() writes the modifies buffers to the log blocks, not fs data blocks
+    // Might crash during write_log(), but it's fine because fs is still consistent
+    write_head();    // **Write header to disk -- the real commit**
+    // The term `commit` refers to the commit to the log system,
+    // at this point, the commit is recorded on the disk's logging layer
+    // It's safe to install transactions to the fs data blocks
     install_trans(0); // Now install writes to home locations
     log.lh.n = 0;
     write_head();    // Erase the transaction from the log
+    // A commit has been `pushed` to the disk (using Git for analogy)
   }
 }
 
@@ -222,12 +239,16 @@ log_write(struct buf *b)
   if (log.outstanding < 1)
     panic("log_write outside of trans");
 
+  // Checks if the buffer already exists in the log
+  // If found in the log, use this logged buffer
   for (i = 0; i < log.lh.n; i++) {
-    if (log.lh.block[i] == b->blockno)   // log absorption
+    if (log.lh.block[i] == b->blockno)   // *log absorption*
       break;
   }
   log.lh.block[i] = b->blockno;
-  if (i == log.lh.n) {  // Add new block to log?
+  if (i == log.lh.n) {  // *Add new block to log*
+    // Increment the buffer's reference count by 1
+    // to prevent the buffer cache from evicting it.
     bpin(b);
     log.lh.n++;
   }
