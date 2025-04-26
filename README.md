@@ -29,6 +29,7 @@
 25. [Path names](https://github.com/FSReed/MIT-6.S081/commit/025707c585c0a677b728ea56b651dcbcb0f650c2) on branch `fs`
 26. [File descriptor](https://github.com/FSReed/MIT-6.S081/commit/2fd55902b2b7fe771fe2d8431c511c288def66c9) on branch `fs`
 27. [System calls (link, open, mkdir, etc.)](https://github.com/FSReed/MIT-6.S081/commit/405cd00e924e343ff4e2190b465a3161bd78edba) on branch `fs`
+28. [Logging layer](https://github.com/FSReed/MIT-6.S081/commit/312bbe3d3612fc8aa102e3a12485128d1253b230) on branch `fs`
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
