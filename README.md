@@ -31,6 +31,11 @@
 27. [System calls (link, open, mkdir, etc.)](https://github.com/FSReed/MIT-6.S081/commit/405cd00e924e343ff4e2190b465a3161bd78edba) on branch `fs`
 28. [Logging layer](https://github.com/FSReed/MIT-6.S081/commit/312bbe3d3612fc8aa102e3a12485128d1253b230) on branch `fs`
 
+## Labs:
+
+- Lab: locks
+   - [1. Memory Allocator](https://github.com/FSReed/MIT-6.S081/commit/4bb6f05acb1021a262f22df9b82adf98822ecf17) on branch `lock`
+
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
 > but is implemented for a modern RISC-V multiprocessor using ANSI C.  
