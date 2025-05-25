@@ -75,6 +75,21 @@ bget(uint dev, uint blockno)
   // Recycle the least recently used (LRU) unused buffer.
   // search all buffers, based on timestamp
   acquire(&bcache.lock);
+  // Maybe there are multiple threads blocked here,
+  // once a thread finished evicting a free buffer, other threads should see this buffer cached!
+  acquire(&bcache.bucket_locks[position]);
+  for (b = bcache.bucket[position].next; b; b = b->next) {
+    if (b->dev == dev && b->blockno == blockno) {
+      b->refcnt++;
+      release(&bcache.bucket_locks[position]);
+      release(&bcache.lock);
+      acquiresleep(&b->lock);
+      return b;
+    }
+  }
+  release(&bcache.bucket_locks[position]);
+
+  // Really no buffer cached, evict a buffer
   uint64 latest_time = 0;
   int bucket = -1, prev_lock = -1;
   for (int i = 0; i < NBUCKET; i++) {
