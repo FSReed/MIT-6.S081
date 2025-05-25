@@ -57,7 +57,6 @@ bget(uint dev, uint blockno)
 {
   struct buf *b;
 
-  acquire(&bcache.lock);
 
   // Is the block already cached?
   int position = blockno % NBUCKET;
@@ -66,39 +65,51 @@ bget(uint dev, uint blockno)
     if (b->dev == dev && b->blockno == blockno) {
       b->refcnt++;
       release(&bcache.bucket_locks[position]);
-      release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
     }
   }
+  release(&bcache.bucket_locks[position]);
 
   // Not cached.
   // Recycle the least recently used (LRU) unused buffer.
   // search all buffers, based on timestamp
+  acquire(&bcache.lock);
   uint64 latest_time = 0;
-  struct buf *p, *q;
+  int bucket = -1, prev_lock = -1;
   for (int i = 0; i < NBUCKET; i++) {
-    // Avoid deadlock
-    if (i != position) acquire(&bcache.bucket_locks[i]);
+    // If found a buffer in a bucket, hold the lock of this bucket
+    acquire(&bcache.bucket_locks[i]);
     struct buf *p = bcache.bucket[i].next;
     while (p) {
       if (p->refcnt == 0) {
         if (!b || p->timestamp > latest_time) {
           b = p;
           latest_time = p->timestamp;
+          bucket = i;
         }
       }
       p = p->next;
     }
-    if (i != position) release(&bcache.bucket_locks[i]);
+    if (bucket != i) {
+      release(&bcache.bucket_locks[i]);
+      continue;
+    }
+
+    // Hold this lock! Or other `bget`s may modify this buffer
+    // release the previous bucket's lock (if needed)
+    if (prev_lock >= 0) release(&bcache.bucket_locks[prev_lock]);
+    prev_lock = i;
   }
 
   if (b) {
-    int prev_pos = b->blockno % NBUCKET;
-    if (prev_pos != position) {
-      acquire(&bcache.bucket_locks[prev_pos]);
+    // The lock we held is prev_lock
+    if (prev_lock != position) {
+      // Lock the bucket we are moving the buffer to
+      acquire(&bcache.bucket_locks[position]);
       // Update the Hash-table
-      struct buf *prev_bkt = bcache.bucket + prev_pos;
+      struct buf *p, *q;
+      struct buf *prev_bkt = bcache.bucket + prev_lock;
       struct buf *current_bkt = bcache.bucket + position;
       // Delete the old buffer
       p = prev_bkt;
@@ -114,13 +125,13 @@ bget(uint dev, uint blockno)
       // Allocate this buffer to a new bucket
       b->next = current_bkt->next;
       current_bkt->next = b;
-      release(&bcache.bucket_locks[prev_pos]);
+      release(&bcache.bucket_locks[position]);
     }
     b->dev = dev;
     b->blockno = blockno;
     b->valid = 0;
     b->refcnt = 1;
-    release(&bcache.bucket_locks[position]);
+    release(&bcache.bucket_locks[prev_lock]);
     release(&bcache.lock);
     acquiresleep(&b->lock);
     return b;
@@ -161,10 +172,11 @@ brelse(struct buf *b)
 
   releasesleep(&b->lock);
 
-  acquire(&bcache.lock);
+  int position = b->blockno % NBUCKET;
+  acquire(&bcache.bucket_locks[position]);
   b->refcnt--;
   b->timestamp = ticks;
-  release(&bcache.lock);
+  release(&bcache.bucket_locks[position]);
 }
 
 void
