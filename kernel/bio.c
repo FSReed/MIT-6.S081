@@ -77,9 +77,9 @@ bget(uint dev, uint blockno)
   acquire(&bcache.lock);
   // Maybe there are multiple threads blocked here,
   // once a thread finished evicting a free buffer, other threads should see this buffer cached!
-  acquire(&bcache.bucket_locks[position]);
   for (b = bcache.bucket[position].next; b; b = b->next) {
     if (b->dev == dev && b->blockno == blockno) {
+      acquire(&bcache.bucket_locks[position]);
       b->refcnt++;
       release(&bcache.bucket_locks[position]);
       release(&bcache.lock);
@@ -87,7 +87,6 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
-  release(&bcache.bucket_locks[position]);
 
   // Really no buffer cached, evict a buffer
   uint64 latest_time = 0;
@@ -121,7 +120,6 @@ bget(uint dev, uint blockno)
     // The lock we held is prev_lock
     if (prev_lock != position) {
       // Lock the bucket we are moving the buffer to
-      acquire(&bcache.bucket_locks[position]);
       // Update the Hash-table
       struct buf *p, *q;
       struct buf *prev_bkt = bcache.bucket + prev_lock;
@@ -138,6 +136,7 @@ bget(uint dev, uint blockno)
         q = q->next;
       }
       // Allocate this buffer to a new bucket
+      acquire(&bcache.bucket_locks[position]);
       b->next = current_bkt->next;
       current_bkt->next = b;
       release(&bcache.bucket_locks[position]);
