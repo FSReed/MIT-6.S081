@@ -77,16 +77,22 @@ bget(uint dev, uint blockno)
   // search all buffers, based on timestamp
   uint64 latest_time = 0;
   struct buf *p, *q;
-  for (p = bcache.buf; p < bcache.buf + NBUF; p++) {
-    if (p->refcnt == 0) {
-      if (!b || p->timestamp > latest_time) {
-        b = p;
-        latest_time = p->timestamp;
+  for (int i = 0; i < NBUCKET; i++) {
+    // Avoid deadlock
+    if (i != position) acquire(&bcache.bucket_locks[i]);
+    struct buf *p = bcache.bucket[i].next;
+    while (p) {
+      if (p->refcnt == 0) {
+        if (!b || p->timestamp > latest_time) {
+          b = p;
+          latest_time = p->timestamp;
+        }
       }
+      p = p->next;
     }
+    if (i != position) release(&bcache.bucket_locks[i]);
   }
 
-  // Acquire sequence: Small bucket -> Big Bucket
   if (b) {
     int prev_pos = b->blockno % NBUCKET;
     if (prev_pos != position) {
@@ -110,12 +116,12 @@ bget(uint dev, uint blockno)
       current_bkt->next = b;
       release(&bcache.bucket_locks[prev_pos]);
     }
-    release(&bcache.bucket_locks[position]);
-    release(&bcache.lock);
     b->dev = dev;
     b->blockno = blockno;
     b->valid = 0;
     b->refcnt = 1;
+    release(&bcache.bucket_locks[position]);
+    release(&bcache.lock);
     acquiresleep(&b->lock);
     return b;
   }
@@ -157,10 +163,7 @@ brelse(struct buf *b)
 
   acquire(&bcache.lock);
   b->refcnt--;
-  if (b->refcnt == 0) {
-    // no one is waiting for it.
-    b->timestamp = ticks;
-  }
+  b->timestamp = ticks;
   release(&bcache.lock);
 }
 
