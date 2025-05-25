@@ -40,6 +40,7 @@
       - 2.2: [Search in each bucket](https://github.com/FSReed/MIT-6.S081/commit/bb64704e25ecb6e6df44ae1d019d86f43f05efee).
       - 2.3: [~Make searching the cache run parallel, but only work on a single CPU~](https://github.com/FSReed/MIT-6.S081/commit/62dd717b8e75cac3b2322b4bb81bc604e64797d5).
       - 2.4: [**Pass `usertests`!**](https://github.com/FSReed/MIT-6.S081/commit/ba2f26643d6ef282eecd612cb597d4f163a56409). However, `bcachetest` sometimes fails, which I believe is acceptable.
+      - 2.5: [Decrease the serial partition of the code](https://github.com/FSReed/MIT-6.S081/commit/6c67ff54d8c62a2eb2883b5e8113882edf7da959). This should mark the end of this lab.
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
