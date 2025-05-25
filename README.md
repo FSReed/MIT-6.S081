@@ -38,6 +38,7 @@
    2. *Buffer Cache*
       - 2.1: [Partitioned bcache with buckets, but with serial `bget`](https://github.com/FSReed/MIT-6.S081/commit/1f47d7b75a2cf7dbe7d36e260f21d76469e7e5eb). This commit tests the correctness of the data structure.
       - 2.2: [Search in each bucket](https://github.com/FSReed/MIT-6.S081/commit/bb64704e25ecb6e6df44ae1d019d86f43f05efee).
+      - 2.3: [~Make searching the cache run parallel, but only work on a single CPU~](https://github.com/FSReed/MIT-6.S081/commit/79f1948cef5800d14f4bbcc831d2f8c1a6545b80).
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
