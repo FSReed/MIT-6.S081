@@ -407,8 +407,8 @@ iunlockput(struct inode *ip)
 static uint
 bmap(struct inode *ip, uint bn)
 {
-  uint addr, *a;
-  struct buf *bp;
+  uint addr, *a, *b;
+  struct buf *bp, *second_bp;
 
   if(bn < NDIRECT){
     // in direct blocks
@@ -435,6 +435,32 @@ bmap(struct inode *ip, uint bn)
     brelse(bp);
     return addr;
   }
+  bn -= NINDIRECT;
+
+  if (bn < DOUBLE_NINDIRECT) {
+    if ((addr = ip->addrs[NDIRECT + 1]) == 0)
+      // Allocate the first root block of doubly-indirect block
+      ip->addrs[NDIRECT + 1] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);
+    uint first_level_index = bn / NINDIRECT;
+    uint second_level_index = bn % NINDIRECT;
+    a = (uint*)bp->data;
+    if ((addr = a[first_level_index]) == 0) {
+      // Allocate the first level block
+      a[first_level_index] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    second_bp = bread(ip->dev, addr);
+    b = (uint*)second_bp->data;
+    if ((addr = b[second_level_index]) == 0) {
+      // Allocate the leaf block
+      b[second_level_index] = addr = balloc(ip->dev);
+      log_write(second_bp);
+    }
+    brelse(second_bp);
+    brelse(bp);
+    return addr;
+  }
 
   panic("bmap: out of range");
 }
@@ -446,7 +472,7 @@ itrunc(struct inode *ip)
 {
   int i, j;
   struct buf *bp;
-  uint *a;
+  uint *a, *b;
 
   // Free direct blocks
   for(i = 0; i < NDIRECT; i++){
@@ -468,6 +494,29 @@ itrunc(struct inode *ip)
     // Free the indirect block itself
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
+  }
+
+  // Free doubly-indirect blocks
+  if (ip->addrs[NDIRECT + 1]) {
+    bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
+    a = (uint*)bp->data;
+    for (i = 0; i < NINDIRECT; i++) {
+      if (a[i]) {
+        struct buf *second_bp;
+        second_bp = bread(ip->dev, a[i]);
+        b = (uint*)second_bp->data;
+        for (j = 0; j < NINDIRECT; j++) {
+          if (b[j]) {
+            bfree(ip->dev, b[j]);
+          }
+        }
+        brelse(second_bp);
+        bfree(ip->dev, a[i]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+    ip->addrs[NDIRECT + 1] = 0;
   }
 
   // Set the file size to 0
