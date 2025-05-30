@@ -43,6 +43,7 @@
       - 2.5: [Decrease the serial partition of the code](https://github.com/FSReed/MIT-6.S081/commit/6c67ff54d8c62a2eb2883b5e8113882edf7da959). This should mark the end of this lab.
 - Lab: file system
   1. [Large files](https://github.com/FSReed/MIT-6.S081/commit/7cc437a935578834ade23830a971404f2089decd).
+  2. [Symbolic links](https://github.com/FSReed/MIT-6.S081/commit/2c0e01380bb78689ec45b1c5e16cb120a8ee689b).
 
 > xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix  
 > Version 6 (v6).  xv6 loosely follows the structure and style of v6,  
