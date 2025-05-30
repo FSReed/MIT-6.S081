@@ -24,4 +24,4 @@
 #endif
 #define MAXPATH      128   // maximum file path name
 
-
+#define MAXSYMDEPTH  10  // max of symlink depth
